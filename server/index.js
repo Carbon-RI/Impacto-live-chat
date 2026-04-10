@@ -18,40 +18,34 @@ cloudinary.config({
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] },
+  maxHttpBufferSize: 1e8,
 });
 
 // Socket.io event handling
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
   // receive_message
   socket.on("send_message", async (data) => {
-    let responseData = { ...data };
+    const { file, ...rest } = data;
+    let responseData = { ...rest };
 
-    if (data.file) {
+    if (file) {
       try {
-        const uploadResponse = await cloudinary.uploader.upload(data.file, {
+        const uploadResponse = await cloudinary.uploader.upload(file, {
           resource_type: "auto",
           folder: "impact_livechat",
         });
-
-        responseData.file = uploadResponse.secure_url;
+        responseData.fileUrl = uploadResponse.secure_url;
         responseData.resourceType = uploadResponse.resource_type;
-        delete responseData.file;
       } catch (error) {
-        console.error("Cloudinary Upload Error", error);
+        console.error("Cloudinary Error", error);
       }
     }
     // Broadcast the message to all clients
-    io.emit("receive_message", data);
+    io.emit("receive_message", responseData);
   });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
+  socket.on("disconnect", () => console.log("User disconnected"));
 });
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
