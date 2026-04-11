@@ -8,7 +8,6 @@ const cloudinary = require("cloudinary").v2;
 const app = express();
 app.use(cors());
 
-// Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -21,12 +20,15 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e8,
 });
 
-// Socket.io event handling
 io.on("connection", (socket) => {
-  // receive_message
+  socket.on("join_room", (data) => {
+    socket.join(data.eventId);
+    console.log(`User ${socket.id} joined room: ${data.eventId}`);
+  });
+
   socket.on("send_message", async (data) => {
-    const { file, ...rest } = data;
-    let responseData = { ...rest };
+    const { file, eventId, ...rest } = data;
+    let responseData = { ...rest, eventId };
 
     if (file) {
       try {
@@ -40,8 +42,8 @@ io.on("connection", (socket) => {
         console.error("Cloudinary Error", error);
       }
     }
-    // Broadcast the message to all clients
-    io.emit("receive_message", responseData);
+
+    io.to(eventId).emit("receive_message", responseData);
   });
 
   socket.on("disconnect", () => console.log("User disconnected"));
