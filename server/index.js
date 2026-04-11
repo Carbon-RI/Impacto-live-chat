@@ -4,6 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const cloudinary = require("cloudinary").v2;
+const { Redis } = require("@upstash/redis");
 
 const app = express();
 app.use(cors());
@@ -20,15 +21,32 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e8,
 });
 
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
 io.on("connection", (socket) => {
-  socket.on("join_room", (data) => {
-    socket.join(data.eventId);
-    console.log(`User ${socket.id} joined room: ${data.eventId}`);
+  socket.on("join_room", async (data) => {
+    const { eventId } = data;
+    socket.join(eventId);
+    console.log(`User ${socket.id} joined room: ${eventId}`);
+
+    try {
+      const history = await redis.lrange(`chat:${eventId}`, 0, 49);
+      socket.emit("receive_history", history.reverse());
+    } catch (err) {
+      console.error("Redis fetch error:", err);
+    }
   });
 
   socket.on("send_message", async (data) => {
     const { file, eventId, ...rest } = data;
-    let responseData = { ...rest, eventId };
+    let responseData = {
+      ...rest,
+      eventId,
+      timestamp: new Date().toISOString(),
+    };
 
     if (file) {
       try {
@@ -44,6 +62,13 @@ io.on("connection", (socket) => {
     }
 
     io.to(eventId).emit("receive_message", responseData);
+
+    try {
+      await redis.lpush(`chat:${eventId}`, JSON.stringify(responseData));
+      await redis.ltrim(`chat:${eventId}`, 0, 99);
+    } catch (err) {
+      console.error("Redis save error:", err);
+    }
   });
 
   socket.on("disconnect", () => console.log("User disconnected"));

@@ -27,6 +27,14 @@ export default function ChatWidget({
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
     newSocket.emit("join_room", { eventId, userId });
+
+    newSocket.on("receive_history", (history: any[]) => {
+      const parsedHistory = history.map((item) =>
+        typeof item === "string" ? JSON.parse(item) : item
+      );
+      setMessages(parsedHistory);
+    });
+
     newSocket.on("receive_message", (data) => {
       setMessages((prev) => [...prev, data]);
       setIsUploading(false);
@@ -43,6 +51,7 @@ export default function ChatWidget({
     socket.emit("send_message", {
       text: inputText,
       eventId,
+      userId,
       senderId: socket.id,
       timestamp: new Date().toLocaleTimeString([], {
         hour: "2-digit",
@@ -62,7 +71,7 @@ export default function ChatWidget({
       socket.emit("send_message", {
         file: reader.result,
         eventId,
-        senderId: socket.id,
+        userId,
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -92,22 +101,20 @@ export default function ChatWidget({
               <div
                 key={index}
                 className={`flex ${
-                  msg.senderId === socket?.id ? "justify-end" : "justify-start"
+                  msg.userId === userId ? "justify-end" : "justify-start"
                 }`}
               >
                 <div
                   className={`max-w-[80%] p-2 rounded-xl shadow-sm ${
-                    msg.senderId === socket?.id
+                    msg.userId === userId
                       ? "bg-blue-600 text-white"
                       : "bg-white border text-black"
                   }`}
                 >
-                  {/* for text */}
                   {msg.text && <p className="text-sm mb-1">{msg.text}</p>}
-                  {/* for media */}
                   {msg.fileUrl &&
                     (msg.resourceType === "image" ? (
-                      <img src={msg.fileUrl} className="rounded" />
+                      <img src={msg.fileUrl} className="rounded" alt="" />
                     ) : (
                       <video src={msg.fileUrl} controls className="rounded" />
                     ))}
@@ -129,7 +136,7 @@ export default function ChatWidget({
                   className="hidden"
                   onChange={handleFileUpload}
                 />
-                <span className="text-xl">Camera</span>
+                <span className="text-xl">📷</span>
               </label>
               <input
                 type="text"
