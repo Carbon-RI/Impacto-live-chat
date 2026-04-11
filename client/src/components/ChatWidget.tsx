@@ -11,6 +11,8 @@ import { io, Socket } from "socket.io-client";
 
 const SOCKET_URL = "http://localhost:5001";
 
+const CONNECTING_PLACEHOLDER = "Connecting...";
+
 /** Pixels from bottom to still count as "at bottom" for auto-scroll. */
 const SCROLL_BOTTOM_THRESHOLD_PX = 64;
 
@@ -21,8 +23,12 @@ function isScrolledToBottom(el: HTMLElement): boolean {
 
 interface ChatWidgetProps {
   eventId: string;
-  userId: string;
-  isParticipant: boolean;
+  /** Supabase Auth user.id (UUID), including anonymous users. */
+  userId: string | null;
+  /** True while anonymous sign-in / session restore is in progress. */
+  authPending?: boolean;
+  /** Set when anonymous auth failed (e.g. provider disabled in Dashboard). */
+  authError?: string | null;
 }
 
 /** Shape used by the widget; socket payloads may include extra fields. */
@@ -37,7 +43,8 @@ interface ChatMessage {
 export default function ChatWidget({
   eventId,
   userId,
-  isParticipant,
+  authPending = false,
+  authError = null,
 }: ChatWidgetProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -49,6 +56,13 @@ export default function ChatWidget({
   const prevMessageCountRef = useRef(0);
   const prevIsOpenRef = useRef(false);
   const [showNewBelow, setShowNewBelow] = useState(false);
+
+  const canChat = Boolean(userId);
+  const inputPlaceholder = authError
+    ? "Sign-in unavailable — check Supabase Anonymous provider"
+    : authPending || !userId
+      ? CONNECTING_PLACEHOLDER
+      : "Message...";
 
   const syncStickToBottomFromScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -119,7 +133,18 @@ export default function ChatWidget({
   }, [messages, isOpen]);
 
   useEffect(() => {
-    if (!isParticipant) return;
+    if (!userId) {
+      queueMicrotask(() => {
+        setSocket((prev) => {
+          if (prev) prev.close();
+          return null;
+        });
+        setMessages([]);
+        setIsUploading(false);
+      });
+      return;
+    }
+
     const newSocket = io(SOCKET_URL);
     queueMicrotask(() => setSocket(newSocket));
     newSocket.emit("join_room", { eventId, userId });
@@ -139,12 +164,10 @@ export default function ChatWidget({
     return () => {
       newSocket.close();
     };
-  }, [eventId, userId, isParticipant]);
-
-  if (!isParticipant) return null;
+  }, [eventId, userId]);
 
   const handleSendText = () => {
-    if (!inputText.trim() || !socket) return;
+    if (!userId || !inputText.trim() || !socket) return;
     stickToBottomRef.current = true;
     setShowNewBelow(false);
     socket.emit("send_message", {
@@ -162,7 +185,7 @@ export default function ChatWidget({
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !socket) return;
+    if (!userId || !file || !socket) return;
     stickToBottomRef.current = true;
     setShowNewBelow(false);
     setIsUploading(true);
@@ -245,32 +268,44 @@ export default function ChatWidget({
                   className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 shadow-md transition hover:bg-gray-50"
                 >
                   <span aria-hidden>↓</span>
-                  新しいメッセージがあります
+                  New messages below
                 </button>
               </div>
             )}
           </div>
           <footer className="p-3 border-t bg-white flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-2">
-              <label className="cursor-pointer p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+              <label
+                className={`rounded-full p-2 bg-gray-100 ${
+                  canChat
+                    ? "cursor-pointer hover:bg-gray-200"
+                    : "cursor-not-allowed opacity-40"
+                }`}
+              >
                 <input
                   type="file"
                   className="hidden"
+                  disabled={!canChat}
                   onChange={handleFileUpload}
                 />
-                <span className="text-xl">📷</span>
+                <span className="text-xl" aria-hidden>
+                  📷
+                </span>
               </label>
               <input
                 type="text"
                 value={inputText}
+                disabled={!canChat}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendText()}
-                placeholder="Message..."
-                className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 text-black"
+                placeholder={inputPlaceholder}
+                className="flex-1 rounded-full border px-4 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
               />
               <button
+                type="button"
+                disabled={!canChat}
                 onClick={handleSendText}
-                className="text-blue-600 font-bold px-2"
+                className="px-2 font-bold text-blue-600 disabled:cursor-not-allowed disabled:text-gray-400"
               >
                 Send
               </button>
