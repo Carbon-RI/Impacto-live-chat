@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Chat widget (single source for size tokens → h-chat-height / w-chat-width utilities) */
+  --chat-panel-width: 350px;
+  --chat-panel-height: 500px;
 }
 
 @theme inline {
@@ -10,6 +13,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --spacing-chat-width: var(--chat-panel-width);
+  --spacing-chat-height: var(--chat-panel-height);
 }
 
 @media (prefers-color-scheme: dark) {
