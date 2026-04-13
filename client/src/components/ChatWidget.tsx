@@ -7,11 +7,26 @@ import {
   useRef,
   useCallback,
 } from "react";
-import { io, Socket } from "socket.io-client";
-
-const SOCKET_URL = "http://localhost:5001";
+import { supabase } from "@/utils/supabase/client";
 
 const CONNECTING_PLACEHOLDER = "Connecting...";
+const CLOUDINARY_CLOUD_NAME =
+  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim() || "";
+const CLOUDINARY_UPLOAD_PRESET =
+  process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET?.trim() || "";
+
+/** Server uses ISO strings; older Redis rows may store legacy display strings. */
+function formatMessageTime(timestamp?: string): string {
+  if (!timestamp) return "";
+  const ms = Date.parse(timestamp);
+  if (!Number.isNaN(ms)) {
+    return new Date(ms).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  return timestamp;
+}
 
 /** Pixels from bottom to still count as "at bottom" for auto-scroll. */
 const SCROLL_BOTTOM_THRESHOLD_PX = 64;
@@ -25,6 +40,8 @@ interface ChatWidgetProps {
   eventId: string;
   /** Supabase Auth user.id (UUID), including anonymous users. */
   userId: string | null;
+  /** Kept for auth readiness checks. */
+  accessToken: string | null;
   /** True while anonymous sign-in / session restore is in progress. */
   authPending?: boolean;
   /** Set when anonymous auth failed (e.g. provider disabled in Dashboard). */
@@ -36,17 +53,71 @@ interface ChatMessage {
   userId?: string;
   text?: string;
   fileUrl?: string;
-  resourceType?: string;
   timestamp?: string;
+}
+
+interface MessageRow {
+  id: string;
+  event_id: string;
+  user_id: string;
+  content: string | null;
+  media_url: string | null;
+  created_at: string;
+}
+
+function mapRowToMessage(row: MessageRow): ChatMessage {
+  return {
+    userId: row.user_id,
+    text: row.content ?? undefined,
+    fileUrl: row.media_url ?? undefined,
+    timestamp: row.created_at,
+  };
+}
+
+function inferResourceType(fileUrl?: string): "image" | "video" | null {
+  if (!fileUrl) return null;
+  if (fileUrl.includes("/image/upload/")) return "image";
+  if (fileUrl.includes("/video/upload/")) return "video";
+  return null;
+}
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET"
+    );
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Cloudinary upload failed: ${response.status}`);
+  }
+
+  const body = (await response.json()) as { secure_url?: string };
+  if (!body.secure_url) {
+    throw new Error("Cloudinary response missing secure_url");
+  }
+  return body.secure_url;
 }
 
 export default function ChatWidget({
   eventId,
   userId,
+  accessToken,
   authPending = false,
   authError = null,
 }: ChatWidgetProps) {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -57,7 +128,7 @@ export default function ChatWidget({
   const prevIsOpenRef = useRef(false);
   const [showNewBelow, setShowNewBelow] = useState(false);
 
-  const canChat = Boolean(userId);
+  const canChat = Boolean(userId && accessToken);
   const inputPlaceholder = authError
     ? "Sign-in unavailable — check Supabase Anonymous provider"
     : authPending || !userId
@@ -133,75 +204,97 @@ export default function ChatWidget({
   }, [messages, isOpen]);
 
   useEffect(() => {
-    if (!userId) {
-      queueMicrotask(() => {
-        setSocket((prev) => {
-          if (prev) prev.close();
-          return null;
-        });
-        setMessages([]);
-        setIsUploading(false);
-      });
+    if (!userId || !accessToken) {
+      setMessages([]);
+      setIsUploading(false);
       return;
     }
 
-    const newSocket = io(SOCKET_URL);
-    queueMicrotask(() => setSocket(newSocket));
-    newSocket.emit("join_room", { eventId, userId });
+    let active = true;
 
-    newSocket.on("receive_history", (history: unknown[]) => {
-      const parsedHistory: ChatMessage[] = history.map((item) => {
-        const raw = typeof item === "string" ? JSON.parse(item) : item;
-        return raw as ChatMessage;
-      });
-      setMessages(parsedHistory);
-    });
+    async function loadHistory() {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("id,event_id,user_id,content,media_url,created_at")
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: true })
+        .limit(100);
 
-    newSocket.on("receive_message", (data: ChatMessage) => {
-      setMessages((prev) => [...prev, data]);
-      setIsUploading(false);
-    });
+      if (!active) return;
+      if (error) {
+        console.error("Failed to load messages:", error.message);
+        return;
+      }
+
+      const rows = (data ?? []) as MessageRow[];
+      setMessages(rows.map(mapRowToMessage));
+    }
+
+    void loadHistory();
+
+    const channel = supabase
+      .channel(`messages:event:${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `event_id=eq.${eventId}`,
+        },
+        (payload) => {
+          const row = payload.new as MessageRow;
+          setMessages((prev) => [...prev, mapRowToMessage(row)]);
+          setIsUploading(false);
+        }
+      )
+      .subscribe();
+
     return () => {
-      newSocket.close();
+      active = false;
+      void supabase.removeChannel(channel);
     };
-  }, [eventId, userId]);
+  }, [eventId, userId, accessToken]);
 
   const handleSendText = () => {
-    if (!userId || !inputText.trim() || !socket) return;
+    if (!userId || !accessToken || !inputText.trim()) return;
     stickToBottomRef.current = true;
     setShowNewBelow(false);
-    socket.emit("send_message", {
-      text: inputText,
-      eventId,
-      userId,
-      senderId: socket.id,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    });
+    const text = inputText.trim();
     setInputText("");
+    void supabase.from("messages").insert({
+      event_id: eventId,
+      user_id: userId,
+      content: text,
+      media_url: null,
+    });
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!userId || !file || !socket) return;
+    if (!userId || !accessToken || !file) return;
     stickToBottomRef.current = true;
     setShowNewBelow(false);
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      socket.emit("send_message", {
-        file: reader.result,
-        eventId,
-        userId,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+    void uploadToCloudinary(file)
+      .then((secureUrl) =>
+        supabase.from("messages").insert({
+          event_id: eventId,
+          user_id: userId,
+          content: null,
+          media_url: secureUrl,
+        })
+      )
+      .then(({ error }) => {
+        if (error) {
+          console.error("Failed to save media message:", error.message);
+          setIsUploading(false);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Cloudinary upload error:", error);
+        setIsUploading(false);
       });
-    };
   };
 
   return (
@@ -243,13 +336,13 @@ export default function ChatWidget({
                   >
                     {msg.text && <p className="text-sm mb-1">{msg.text}</p>}
                     {msg.fileUrl &&
-                      (msg.resourceType === "image" ? (
+                      (inferResourceType(msg.fileUrl) === "image" ? (
                         <img src={msg.fileUrl} className="rounded" alt="" />
                       ) : (
                         <video src={msg.fileUrl} controls className="rounded" />
                       ))}
                     <p className="text-[10px] opacity-70 mt-1">
-                      {msg.timestamp}
+                      {formatMessageTime(msg.timestamp)}
                     </p>
                   </div>
                 </div>
