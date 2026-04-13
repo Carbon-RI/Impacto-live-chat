@@ -11,6 +11,7 @@ const envPath = path.join(__dirname, "..", ".env");
 dotenv.config({ path: envPath });
 
 const app = express();
+app.use(express.json());
 
 const SOCKET_CORS_ORIGINS = (
   process.env.SOCKET_CORS_ORIGIN ||
@@ -54,6 +55,60 @@ app.get("/health", (_req, res) => {
     ok: true,
     socketJwtAuth: Boolean(supabase),
   });
+});
+
+function extractCloudinaryPublicId(mediaUrl: string): string | null {
+  try {
+    const url = new URL(mediaUrl);
+    const uploadMarker = "/upload/";
+    const markerIndex = url.pathname.indexOf(uploadMarker);
+    if (markerIndex < 0) return null;
+    let publicPart = url.pathname.slice(markerIndex + uploadMarker.length);
+    publicPart = publicPart.replace(/^v\d+\//, "");
+    const dotIndex = publicPart.lastIndexOf(".");
+    if (dotIndex > 0) {
+      publicPart = publicPart.slice(0, dotIndex);
+    }
+    return publicPart || null;
+  } catch {
+    return null;
+  }
+}
+
+app.post("/media/delete", async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ error: "server_misconfigured" });
+  }
+  const authHeader = req.header("authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
+  if (!token) return res.status(401).json({ error: "unauthorized" });
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+  if (authError || !user?.id) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  const mediaUrl = typeof req.body?.mediaUrl === "string" ? req.body.mediaUrl : "";
+  const publicId = extractCloudinaryPublicId(mediaUrl);
+  if (!publicId) {
+    return res.status(400).json({ error: "invalid_media_url" });
+  }
+
+  const result = await cloudinary.uploader.destroy(publicId, {
+    resource_type: "image",
+  });
+  if (result.result === "not found") {
+    const fallback = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "video",
+    });
+    return res.json({ ok: true, result: fallback.result });
+  }
+  return res.json({ ok: true, result: result.result });
 });
 
 cloudinary.config({
