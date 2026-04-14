@@ -8,12 +8,11 @@ import {
   useCallback,
 } from "react";
 import { supabase } from "@/utils/supabase/client";
+import { uploadToCloudinary } from "@/utils/cloudinary";
 
 const CONNECTING_PLACEHOLDER = "Connecting...";
-const CLOUDINARY_CLOUD_NAME =
-  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim() || "";
-const CLOUDINARY_UPLOAD_PRESET =
-  process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET?.trim() || "";
+const SERVER_URL =
+  process.env.NEXT_PUBLIC_SERVER_URL?.trim() || "http://localhost:5001";
 
 /** Server uses ISO strings; older Redis rows may store legacy display strings. */
 function formatMessageTime(timestamp?: string): string {
@@ -81,36 +80,6 @@ function inferResourceType(fileUrl?: string): "image" | "video" | null {
   return null;
 }
 
-async function uploadToCloudinary(file: File): Promise<string> {
-  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET"
-    );
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Cloudinary upload failed: ${response.status}`);
-  }
-
-  const body = (await response.json()) as { secure_url?: string };
-  if (!body.secure_url) {
-    throw new Error("Cloudinary response missing secure_url");
-  }
-  return body.secure_url;
-}
-
 export default function ChatWidget({
   eventId,
   userId,
@@ -120,6 +89,7 @@ export default function ChatWidget({
 }: ChatWidgetProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -258,16 +228,20 @@ export default function ChatWidget({
 
   const handleSendText = () => {
     if (!userId || !accessToken || !inputText.trim()) return;
+    if (isSending) return;
     stickToBottomRef.current = true;
     setShowNewBelow(false);
     const text = inputText.trim();
     setInputText("");
-    void supabase.from("messages").insert({
-      event_id: eventId,
-      user_id: userId,
-      content: text,
-      media_url: null,
-    });
+    setIsSending(true);
+    void fetch(`${SERVER_URL}/chat/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ event_id: eventId, content: text, media_url: null }),
+    }).finally(() => setIsSending(false));
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -276,7 +250,7 @@ export default function ChatWidget({
     stickToBottomRef.current = true;
     setShowNewBelow(false);
     setIsUploading(true);
-    void uploadToCloudinary(file)
+    void uploadToCloudinary(file, accessToken)
       .then((secureUrl) =>
         supabase.from("messages").insert({
           event_id: eventId,
@@ -288,13 +262,12 @@ export default function ChatWidget({
       .then(({ error }) => {
         if (error) {
           console.error("Failed to save media message:", error.message);
-          setIsUploading(false);
         }
       })
       .catch((error: unknown) => {
         console.error("Cloudinary upload error:", error);
-        setIsUploading(false);
-      });
+      })
+      .finally(() => setIsUploading(false));
   };
 
   return (
@@ -396,11 +369,11 @@ export default function ChatWidget({
               />
               <button
                 type="button"
-                disabled={!canChat}
+                disabled={!canChat || isSending || isUploading}
                 onClick={handleSendText}
                 className="px-2 font-bold text-blue-600 disabled:cursor-not-allowed disabled:text-gray-400"
               >
-                Send
+                {isSending ? "Sending..." : "Send"}
               </button>
             </div>
           </footer>

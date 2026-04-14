@@ -4,6 +4,7 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { v2 as cloudinary } from "cloudinary";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
@@ -50,6 +51,43 @@ const supabase: SupabaseClient | null =
     ? createClient(supabaseUrl, supabaseAnonKey)
     : null;
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+function getBearerToken(req: express.Request): string {
+  const authHeader = req.header("authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
+  return token;
+}
+
+function createAuthedSupabaseClient(token: string): SupabaseClient {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("server_misconfigured");
+  }
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+}
+
+const apiLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({
+      error: "too_many_requests",
+      message: "Too many requests. Please wait a minute and try again.",
+      retryAfterSeconds: 60,
+    }),
+});
+
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
@@ -75,14 +113,156 @@ function extractCloudinaryPublicId(mediaUrl: string): string | null {
   }
 }
 
+/**
+ * Returns a short-lived Cloudinary upload signature. Only authenticated users
+ * may request signatures; the API secret never leaves the server.
+ */
+app.post("/cloudinary/sign-upload", apiLimiter, async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ error: "server_misconfigured" });
+  }
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET?.trim();
+  if (!cloudName || !apiKey || !apiSecret || !uploadPreset) {
+    return res.status(500).json({ error: "cloudinary_misconfigured" });
+  }
+
+  const token = getBearerToken(req);
+  if (!token) return res.status(401).json({ error: "unauthorized" });
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+  if (authError || !user?.id) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  const timestamp = Math.round(Date.now() / 1000);
+  const paramsToSign: Record<string, string | number> = {
+    timestamp,
+    upload_preset: uploadPreset,
+  };
+
+  const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
+
+  return res.json({
+    cloudName,
+    apiKey,
+    timestamp,
+    signature,
+    uploadPreset,
+  });
+});
+
+app.post("/events", apiLimiter, async (req, res) => {
+  const token = getBearerToken(req);
+  if (!token) return res.status(401).json({ error: "unauthorized" });
+  if (!supabase) return res.status(500).json({ error: "server_misconfigured" });
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+  if (authError || !user?.id) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  const body = req.body as Partial<{
+    title: unknown;
+    category: unknown;
+    description: unknown;
+    location: unknown;
+    start_at: unknown;
+    end_at: unknown;
+    image_url: unknown;
+  }>;
+
+  const title = typeof body.title === "string" ? body.title : "";
+  const category = typeof body.category === "string" ? body.category : "";
+  const description = typeof body.description === "string" ? body.description : "";
+  const location = typeof body.location === "string" ? body.location : "";
+  const start_at = typeof body.start_at === "string" ? body.start_at : "";
+  const end_at = typeof body.end_at === "string" ? body.end_at : "";
+  const image_url = typeof body.image_url === "string" ? body.image_url : null;
+
+  if (!title || !category || !description || !location || !start_at || !end_at) {
+    return res.status(400).json({ error: "invalid_payload" });
+  }
+
+  const authed = createAuthedSupabaseClient(token);
+  const { data, error } = await authed
+    .from("events")
+    .insert({
+      organizer_id: user.id,
+      title,
+      category,
+      description,
+      location,
+      start_at,
+      end_at,
+      image_url,
+      is_chat_opened: false,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ id: data?.id ?? null });
+});
+
+app.post("/chat/messages", apiLimiter, async (req, res) => {
+  const token = getBearerToken(req);
+  if (!token) return res.status(401).json({ error: "unauthorized" });
+  if (!supabase) return res.status(500).json({ error: "server_misconfigured" });
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+  if (authError || !user?.id) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  const body = req.body as Partial<{
+    event_id: unknown;
+    content: unknown;
+    media_url: unknown;
+  }>;
+
+  const event_id = typeof body.event_id === "string" ? body.event_id : "";
+  const content = typeof body.content === "string" ? body.content : null;
+  const media_url = typeof body.media_url === "string" ? body.media_url : null;
+
+  if (!event_id) return res.status(400).json({ error: "invalid_payload" });
+  if (!content && !media_url) return res.status(400).json({ error: "invalid_payload" });
+  if (content && content.length > MAX_MESSAGE_TEXT) {
+    return res.status(400).json({ error: "text_too_long" });
+  }
+
+  const authed = createAuthedSupabaseClient(token);
+  const { data, error } = await authed
+    .from("messages")
+    .insert({
+      event_id,
+      user_id: user.id,
+      content,
+      media_url,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ id: data?.id ?? null });
+});
+
 app.post("/media/delete", async (req, res) => {
   if (!supabase) {
     return res.status(500).json({ error: "server_misconfigured" });
   }
-  const authHeader = req.header("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length).trim()
-    : "";
+  const token = getBearerToken(req);
   if (!token) return res.status(401).json({ error: "unauthorized" });
 
   const {
@@ -109,12 +289,6 @@ app.post("/media/delete", async (req, res) => {
     return res.json({ ok: true, result: fallback.result });
   }
   return res.json({ ok: true, result: result.result });
-});
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 const server = http.createServer(app);
