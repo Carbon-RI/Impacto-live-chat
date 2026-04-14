@@ -12,6 +12,26 @@ export function getMediaFileKind(file: File): MediaFileKind {
   return "unknown";
 }
 
+/**
+ * Validates using only `File.type` (`image/*` vs `video/*`) and size caps.
+ * For chat attachments with `accept="image/*,video/*"`.
+ */
+export function validateMediaFileByMimeType(file: File): string | null {
+  if (file.type.startsWith("image/")) {
+    if (file.size > MAX_IMAGE_BYTES) {
+      return "Image files must be 2MB or smaller.";
+    }
+    return null;
+  }
+  if (file.type.startsWith("video/")) {
+    if (file.size > MAX_VIDEO_BYTES) {
+      return "Video files must be 10MB or smaller.";
+    }
+    return null;
+  }
+  return "Please select an image or video file.";
+}
+
 /** Returns a Japanese error message if invalid; otherwise `null`. */
 export function validateMediaFileSize(file: File): string | null {
   const kind = getMediaFileKind(file);
