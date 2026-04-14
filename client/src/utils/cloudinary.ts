@@ -21,7 +21,7 @@ export async function uploadToCloudinary(
     throw new Error("Not signed in");
   }
 
-  const signRes = await fetch(`${SERVER_URL}/cloudinary/sign-upload`, {
+  const signRes = await fetch(`${SERVER_URL}/chat/cloudinary/sign-upload`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

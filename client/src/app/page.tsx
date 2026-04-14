@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useChatOpen } from "@/components/GlobalChatProvider";
+import { useChatOpen } from "@/features/chat/components/GlobalChatProvider";
 import { supabase } from "@/utils/supabase/client";
 import type { EventRow } from "@/types/events";
 import { inferMediaTypeFromUrl } from "@/utils/media";
@@ -58,10 +59,7 @@ export default function TopPage() {
 
   useEffect(() => {
     const currentUserId = user?.id;
-    if (!currentUserId) {
-      setEvents([]);
-      return;
-    }
+    if (!currentUserId) return;
 
     let active = true;
     async function loadEvents() {
@@ -113,10 +111,7 @@ export default function TopPage() {
 
   useEffect(() => {
     const currentUserId = user?.id;
-    if (!currentUserId) {
-      setJoinedEventIds(new Set());
-      return;
-    }
+    if (!currentUserId) return;
     async function loadJoins() {
       const { data, error: fetchError } = await supabase
         .from("event_participants")
@@ -223,7 +218,7 @@ export default function TopPage() {
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-7">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold">
-            {user ? "Events" : "Sign in"}
+            {user ? "Events" : "Impacto"}
           </h1>
           {user ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -316,10 +311,11 @@ export default function TopPage() {
                 No events yet.
               </div>
             ) : null}
-            {events.map((event) => {
+            {events.map((event, index) => {
               const isOrganizer = user.id === event.organizer_id;
               const isJoined = joinedEventIds.has(event.id);
               const canJoinChat = event.is_chat_opened && (isJoined || isOrganizer);
+              const isLikelyLcpImage = index < 4;
               return (
                 <article
                   key={event.id}
@@ -335,11 +331,16 @@ export default function TopPage() {
                         preload="metadata"
                       />
                     ) : (
-                      <img
-                        src={event.image_url}
-                        alt={event.title}
-                        className="mb-3 h-32 w-full rounded object-cover md:h-36"
-                      />
+                      <div className="relative mb-3 h-32 w-full overflow-hidden rounded md:h-36">
+                        <Image
+                          src={event.image_url}
+                          alt={event.title}
+                          fill
+                          loading={isLikelyLcpImage ? "eager" : "lazy"}
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                        />
+                      </div>
                     )
                   ) : null}
                   <div className="mb-1 flex flex-wrap items-center gap-2">
