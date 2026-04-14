@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { uploadToCloudinary } from "@/utils/cloudinary";
 import { validateMediaFileByMimeType } from "@/utils/fileLimits";
+import CameraCaptureModal from "@/components/CameraCaptureModal";
 
 const CONNECTING_PLACEHOLDER = "Connecting...";
 const SERVER_URL =
@@ -93,8 +94,12 @@ export default function ChatWidget({
   const [isSending, setIsSending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [showMediaOptions, setShowMediaOptions] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"image" | "video" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoCaptureInputRef = useRef<HTMLInputElement>(null);
+  const videoCaptureInputRef = useRef<HTMLInputElement>(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const prevIsOpenRef = useRef(false);
@@ -278,8 +283,11 @@ export default function ChatWidget({
       })
       .finally(() => {
         setIsUploading(false);
+        setShowMediaOptions(false);
         input.value = "";
         if (fileInputRef.current) fileInputRef.current.value = "";
+        if (photoCaptureInputRef.current) photoCaptureInputRef.current.value = "";
+        if (videoCaptureInputRef.current) videoCaptureInputRef.current.value = "";
       });
   };
 
@@ -354,28 +362,79 @@ export default function ChatWidget({
           </div>
           <footer className="p-3 border-t bg-white flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-1.5">
-              <label
-                className={`rounded-full p-2 bg-gray-100 ${
-                  canChat
-                    ? "cursor-pointer hover:bg-gray-200"
-                    : "cursor-not-allowed opacity-40"
-                }`}
-                title="Add media"
-                aria-label="Add media"
-              >
+              <div className="relative">
+                <button
+                  type="button"
+                  className={`rounded-full px-3 py-2 text-sm font-medium ${
+                    canChat
+                      ? "bg-gray-100 text-gray-800 cursor-pointer hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-500 cursor-not-allowed opacity-40"
+                  }`}
+                  title="Add media"
+                  aria-label="Add media"
+                  disabled={!canChat}
+                  onClick={() => setShowMediaOptions((prev) => !prev)}
+                >
+                  Add media
+                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
                   accept="image/*,video/*"
+                  disabled={!canChat}
+                  onChange={handleMediaFileUpload}
+                />
+                <input
+                  ref={photoCaptureInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
                   capture="environment"
                   disabled={!canChat}
                   onChange={handleMediaFileUpload}
                 />
-                <span className="text-xl" aria-hidden>
-                  {"\uD83D\uDCCE"}
-                </span>
-              </label>
+                <input
+                  ref={videoCaptureInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="video/*"
+                  capture="environment"
+                  disabled={!canChat}
+                  onChange={handleMediaFileUpload}
+                />
+                {showMediaOptions ? (
+                  <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 flex w-44 flex-col gap-1 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+                    <button
+                      type="button"
+                      className="rounded px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                      onClick={() => {
+                        setShowMediaOptions(false);
+                        setCameraMode("image");
+                      }}
+                    >
+                      Take photo
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                      onClick={() => {
+                        setShowMediaOptions(false);
+                        setCameraMode("video");
+                      }}
+                    >
+                      Record video
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded px-2 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Choose from library
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <input
                 type="text"
                 value={inputText}
@@ -395,6 +454,44 @@ export default function ChatWidget({
               </button>
             </div>
           </footer>
+          {cameraMode ? (
+            <CameraCaptureModal
+              mode={cameraMode}
+              onClose={() => setCameraMode(null)}
+              onCaptured={(file) => {
+                const err = validateMediaFileByMimeType(file);
+                if (err) {
+                  alert(err);
+                  return;
+                }
+                if (!accessToken || !userId) return;
+                stickToBottomRef.current = true;
+                setShowNewBelow(false);
+                setIsUploading(true);
+                void uploadToCloudinary(file, accessToken)
+                  .then((secureUrl) =>
+                    supabase.from("messages").insert({
+                      event_id: eventId,
+                      user_id: userId,
+                      content: null,
+                      media_url: secureUrl,
+                    })
+                  )
+                  .then(({ error }) => {
+                    if (error) {
+                      console.error("Failed to save media message:", error.message);
+                    }
+                  })
+                  .catch((error: unknown) => {
+                    console.error("Cloudinary upload error:", error);
+                  })
+                  .finally(() => {
+                    setCameraMode(null);
+                    setIsUploading(false);
+                  });
+              }}
+            />
+          ) : null}
         </>
       )}
     </div>

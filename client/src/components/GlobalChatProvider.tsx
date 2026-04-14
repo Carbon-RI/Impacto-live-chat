@@ -12,6 +12,7 @@ import { supabase } from "@/utils/supabase/client";
 import { uploadToCloudinary } from "@/utils/cloudinary";
 import { validateMediaFileByMimeType } from "@/utils/fileLimits";
 import { inferMediaTypeFromUrl } from "@/utils/media";
+import CameraCaptureModal from "@/components/CameraCaptureModal";
 import type { EventRow } from "@/types/events";
 import type { Session } from "@supabase/supabase-js";
 
@@ -75,16 +76,20 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [chatText, setChatText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showMediaOptions, setShowMediaOptions] = useState(false);
   const [pendingNewBelow, setPendingNewBelow] = useState(0);
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null);
   const [chatFormError, setChatFormError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"image" | "video" | null>(null);
 
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openRafRef = useRef<number | null>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const messageContentRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoCaptureInputRef = useRef<HTMLInputElement>(null);
+  const videoCaptureInputRef = useRef<HTMLInputElement>(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
 
@@ -555,8 +560,25 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
     setPendingNewBelow(0);
     setChatText("");
     setSelectedFile(null);
+    setShowMediaOptions(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (photoCaptureInputRef.current) photoCaptureInputRef.current.value = "";
+    if (videoCaptureInputRef.current) videoCaptureInputRef.current.value = "";
     setIsSending(false);
+  }
+
+  function handleMediaFileSelect(file: File | null, input: HTMLInputElement) {
+    if (file) {
+      const err = validateMediaFileByMimeType(file);
+      if (err) {
+        alert(err);
+        input.value = "";
+        setSelectedFile(null);
+        return;
+      }
+    }
+    setSelectedFile(file);
+    setShowMediaOptions(false);
   }
 
   async function deleteMessage(messageId: string) {
@@ -802,37 +824,86 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
               onChange={(e) => setChatText(e.target.value)}
             />
             <div className="flex w-full min-w-0 items-stretch gap-2">
-              <div className="flex min-h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded bg-white/10 px-3 py-2">
-                <label
-                  className="flex min-h-[26px] min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm font-medium text-white/95"
+              <div className="relative flex min-h-[42px] min-w-0 flex-1 items-center overflow-visible rounded bg-white/10 px-3 py-2">
+                <button
+                  type="button"
+                  className="flex min-h-[26px] min-w-0 flex-1 items-center text-left text-sm font-medium text-white/95"
                   aria-label="Add media"
+                  onClick={() => setShowMediaOptions((prev) => !prev)}
                 >
-                  <span className="shrink-0 text-base leading-none" aria-hidden>
-                    {"\uD83D\uDCCE"}
+                  <span className="min-w-0 truncate">
+                    {selectedFile ? `Attached: ${selectedFile.name}` : "Add media"}
                   </span>
-                  <span className="min-w-0 truncate">Add media</span>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="sr-only"
-                    accept="image/*,video/*"
-                    capture="environment"
-                    onChange={(e) => {
-                      const input = e.target;
-                      const file = input.files?.[0] ?? null;
-                      if (file) {
-                        const err = validateMediaFileByMimeType(file);
-                        if (err) {
-                          alert(err);
-                          input.value = "";
-                          setSelectedFile(null);
-                          return;
-                        }
-                      }
-                      setSelectedFile(file);
+                </button>
+                {selectedFile ? (
+                  <button
+                    type="button"
+                    className="ml-2 shrink-0 rounded border border-white/30 px-2 py-1 text-xs text-white/90 hover:bg-white/15"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setShowMediaOptions(false);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                      if (photoCaptureInputRef.current) photoCaptureInputRef.current.value = "";
+                      if (videoCaptureInputRef.current) videoCaptureInputRef.current.value = "";
                     }}
-                  />
-                </label>
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="sr-only"
+                  accept="image/*,video/*"
+                  onChange={(e) => handleMediaFileSelect(e.target.files?.[0] ?? null, e.target)}
+                />
+                <input
+                  ref={photoCaptureInputRef}
+                  type="file"
+                  className="sr-only"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => handleMediaFileSelect(e.target.files?.[0] ?? null, e.target)}
+                />
+                <input
+                  ref={videoCaptureInputRef}
+                  type="file"
+                  className="sr-only"
+                  accept="video/*"
+                  capture="environment"
+                  onChange={(e) => handleMediaFileSelect(e.target.files?.[0] ?? null, e.target)}
+                />
+                {showMediaOptions ? (
+                  <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 flex w-full min-w-[220px] flex-col gap-1 rounded-lg border border-white/25 bg-black/90 p-2 shadow-xl">
+                    <button
+                      type="button"
+                      className="rounded px-2 py-1.5 text-left text-xs text-white hover:bg-white/15"
+                      onClick={() => {
+                        setShowMediaOptions(false);
+                        setCameraMode("image");
+                      }}
+                    >
+                      Take photo
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded px-2 py-1.5 text-left text-xs text-white hover:bg-white/15"
+                      onClick={() => {
+                        setShowMediaOptions(false);
+                        setCameraMode("video");
+                      }}
+                    >
+                      Record video
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded px-2 py-1.5 text-left text-xs text-white hover:bg-white/15"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Choose from library
+                    </button>
+                  </div>
+                ) : null}
               </div>
               <button
                 className="shrink-0 self-center rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3] disabled:opacity-60"
@@ -885,6 +956,20 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      ) : null}
+      {cameraMode ? (
+        <CameraCaptureModal
+          mode={cameraMode}
+          onClose={() => setCameraMode(null)}
+          onCaptured={(file) => {
+            const err = validateMediaFileByMimeType(file);
+            if (err) {
+              alert(err);
+              return;
+            }
+            setSelectedFile(file);
+          }}
+        />
       ) : null}
     </ChatOpenContext.Provider>
   );
