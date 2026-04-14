@@ -18,6 +18,8 @@ import type { Session } from "@supabase/supabase-js";
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL?.trim() || "http://localhost:5001";
 const ACTIVE_CHAT_EVENT_STORAGE_KEY = "active_chat_event_id";
 const SCROLL_BOTTOM_THRESHOLD_PX = 64;
+const CHAT_TOGGLE_CHANNEL = "chat-toggle-events";
+const CHAT_TOGGLE_EVENT = "chat_toggled";
 
 function isScrolledToBottom(el: HTMLElement): boolean {
   const { scrollTop, scrollHeight, clientHeight } = el;
@@ -47,7 +49,10 @@ function formatTime(input: string): string {
   });
 }
 
-type ChatOpenContextValue = { openChat: (event: EventRow) => void };
+type ChatOpenContextValue = {
+  openChat: (event: EventRow) => void;
+  setEventChatOpened: (eventId: string, isChatOpened: boolean) => void;
+};
 
 const ChatOpenContext = createContext<ChatOpenContextValue | null>(null);
 
@@ -132,9 +137,12 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
       setSession(nextSession);
-      setIsChatModalOpen(false);
-      setActiveChatEvent(null);
-      setMessages([]);
+      // Keep chat open across token refresh; only reset on sign-out.
+      if (!nextSession) {
+        setIsChatModalOpen(false);
+        setActiveChatEvent(null);
+        setMessages([]);
+      }
     });
     return () => {
       active = false;
@@ -372,7 +380,9 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (!activeChatEvent) return;
     const latest = events.find((event) => event.id === activeChatEvent.id);
-    if (!latest || !latest.is_chat_opened) {
+    // Do not auto-close while events are still syncing; only close when we
+    // explicitly know the event exists and chat was closed.
+    if (latest && !latest.is_chat_opened) {
       closeChatModal();
     }
   }, [activeChatEvent, events, closeChatModal]);
@@ -395,6 +405,23 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
     }
   }, [events, joinedEventIds, user, loading]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel(CHAT_TOGGLE_CHANNEL)
+      .on("broadcast", { event: CHAT_TOGGLE_EVENT }, (payload) => {
+        const next = payload.payload as { eventId?: string; isChatOpened?: boolean };
+        if (!next.eventId || typeof next.isChatOpened !== "boolean") return;
+        const opened = next.isChatOpened;
+        setEvents((prev) =>
+          prev.map((row) => (row.id === next.eventId ? { ...row, is_chat_opened: opened } : row))
+        );
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
   function minimizeChatPanel() {
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
@@ -413,6 +440,15 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
       cancelAnimationFrame(openRafRef.current);
       openRafRef.current = null;
     }
+    // Keep provider-side event cache in sync with the source event so
+    // stale rows do not immediately trigger auto-close after opening.
+    setEvents((prev) => {
+      const idx = prev.findIndex((row) => row.id === event.id);
+      if (idx < 0) return [...prev, event];
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...event, is_chat_opened: true };
+      return next;
+    });
     setActiveChatEvent(event);
     setIsChatModalOpen(false);
     openRafRef.current = requestAnimationFrame(() => {
@@ -421,6 +457,20 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
     });
     localStorage.setItem(ACTIVE_CHAT_EVENT_STORAGE_KEY, event.id);
   }, []);
+
+  const setEventChatOpened = useCallback(
+    (eventId: string, isChatOpened: boolean) => {
+      setEvents((prev) =>
+        prev.map((row) =>
+          row.id === eventId ? { ...row, is_chat_opened: isChatOpened } : row
+        )
+      );
+      if (!isChatOpened && activeChatEvent?.id === eventId) {
+        closeChatModal();
+      }
+    },
+    [activeChatEvent?.id, closeChatModal]
+  );
 
   function handleChatTabClick() {
     if (!user) return;
@@ -572,7 +622,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
   const showChatTab = Boolean(user && canUseChatTab && !isChatModalOpen);
 
   return (
-    <ChatOpenContext.Provider value={{ openChat }}>
+    <ChatOpenContext.Provider value={{ openChat, setEventChatOpened }}>
       {children}
 
       {activeChatEvent ? (

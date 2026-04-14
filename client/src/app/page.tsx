@@ -9,6 +9,8 @@ import { inferMediaTypeFromUrl } from "@/utils/media";
 import type { Session } from "@supabase/supabase-js";
 
 type AuthMode = "sign-in" | "sign-up";
+const CHAT_TOGGLE_CHANNEL = "chat-toggle-events";
+const CHAT_TOGGLE_EVENT = "chat_toggled";
 
 function formatTime(input: string): string {
   return new Date(input).toLocaleString(undefined, {
@@ -20,7 +22,7 @@ function formatTime(input: string): string {
 }
 
 export default function TopPage() {
-  const { openChat } = useChatOpen();
+  const { openChat, setEventChatOpened } = useChatOpen();
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [joinedEventIds, setJoinedEventIds] = useState<Set<string>>(new Set());
@@ -91,6 +93,23 @@ export default function TopPage() {
       void supabase.removeChannel(channel);
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(CHAT_TOGGLE_CHANNEL)
+      .on("broadcast", { event: CHAT_TOGGLE_EVENT }, (payload) => {
+        const next = payload.payload as { eventId?: string; isChatOpened?: boolean };
+        if (!next.eventId || typeof next.isChatOpened !== "boolean") return;
+        const opened = next.isChatOpened;
+        setEvents((prev) =>
+          prev.map((row) => (row.id === next.eventId ? { ...row, is_chat_opened: opened } : row))
+        );
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     const currentUserId = user?.id;
@@ -164,14 +183,35 @@ export default function TopPage() {
   }
 
   async function toggleChat(event: EventRow, shouldOpen: boolean) {
+    // Reflect immediately in the current UI while server update propagates.
+    setEvents((prev) =>
+      prev.map((row) =>
+        row.id === event.id ? { ...row, is_chat_opened: shouldOpen } : row
+      )
+    );
+    setEventChatOpened(event.id, shouldOpen);
     const { error: updateError } = await supabase
       .from("events")
       .update({ is_chat_opened: shouldOpen })
       .eq("id", event.id);
     if (updateError) {
       setError(updateError.message);
+      setEvents((prev) =>
+        prev.map((row) =>
+          row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
+        )
+      );
+      setEventChatOpened(event.id, event.is_chat_opened);
       return;
     }
+    const broadcastChannel = supabase.channel(CHAT_TOGGLE_CHANNEL);
+    await broadcastChannel.subscribe();
+    await broadcastChannel.send({
+      type: "broadcast",
+      event: CHAT_TOGGLE_EVENT,
+      payload: { eventId: event.id, isChatOpened: shouldOpen },
+    });
+    void supabase.removeChannel(broadcastChannel);
   }
 
   if (loading) {
