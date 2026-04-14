@@ -9,6 +9,7 @@ import {
 } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { uploadToCloudinary } from "@/utils/cloudinary";
+import { validateMediaFileByMimeType } from "@/utils/fileLimits";
 
 const CONNECTING_PLACEHOLDER = "Connecting...";
 const SERVER_URL =
@@ -93,6 +94,7 @@ export default function ChatWidget({
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const prevIsOpenRef = useRef(false);
@@ -244,9 +246,16 @@ export default function ChatWidget({
     }).finally(() => setIsSending(false));
   };
 
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleMediaFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
     if (!userId || !accessToken || !file) return;
+    const sizeError = validateMediaFileByMimeType(file);
+    if (sizeError) {
+      alert(sizeError);
+      input.value = "";
+      return;
+    }
     stickToBottomRef.current = true;
     setShowNewBelow(false);
     setIsUploading(true);
@@ -267,7 +276,11 @@ export default function ChatWidget({
       .catch((error: unknown) => {
         console.error("Cloudinary upload error:", error);
       })
-      .finally(() => setIsUploading(false));
+      .finally(() => {
+        setIsUploading(false);
+        input.value = "";
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      });
   };
 
   return (
@@ -340,22 +353,27 @@ export default function ChatWidget({
             )}
           </div>
           <footer className="p-3 border-t bg-white flex flex-col gap-2 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <label
                 className={`rounded-full p-2 bg-gray-100 ${
                   canChat
                     ? "cursor-pointer hover:bg-gray-200"
                     : "cursor-not-allowed opacity-40"
                 }`}
+                title="Add media"
+                aria-label="Add media"
               >
                 <input
+                  ref={fileInputRef}
                   type="file"
                   className="hidden"
+                  accept="image/*,video/*"
+                  capture="environment"
                   disabled={!canChat}
-                  onChange={handleFileUpload}
+                  onChange={handleMediaFileUpload}
                 />
                 <span className="text-xl" aria-hidden>
-                  📷
+                  {"\uD83D\uDCCE"}
                 </span>
               </label>
               <input

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { uploadToCloudinary } from "@/utils/cloudinary";
 import { validateMediaFileSize } from "@/utils/fileLimits";
@@ -26,6 +26,8 @@ export default function NewEventPage() {
   const [eventPhoto, setEventPhoto] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const coverImageInputRef = useRef<HTMLInputElement>(null);
+  const coverVideoInputRef = useRef<HTMLInputElement>(null);
 
   const user = session?.user ?? null;
 
@@ -244,27 +246,60 @@ export default function NewEventPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-gray-700">Cover media</label>
-              <input
-                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#2B41B7]"
-                type="file"
-                accept="image/*,video/*"
-                onChange={(e) => {
-                  const input = e.target;
-                  const file = input.files?.[0] ?? null;
-                  if (file) {
-                    const err = validateMediaFileSize(file);
-                    if (err) {
-                      alert(err);
-                      input.value = "";
-                      setEventPhoto(null);
-                      return;
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">Cover image</label>
+                <input
+                  ref={coverImageInputRef}
+                  className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#2B41B7]"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    const input = e.target;
+                    const file = input.files?.[0] ?? null;
+                    if (file) {
+                      const err = validateMediaFileSize(file);
+                      if (err) {
+                        alert(err);
+                        input.value = "";
+                        setEventPhoto(null);
+                        return;
+                      }
                     }
-                  }
-                  setEventPhoto(file);
-                }}
-              />
+                    setEventPhoto(file);
+                    if (coverVideoInputRef.current) coverVideoInputRef.current.value = "";
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">Cover video</label>
+                <input
+                  ref={coverVideoInputRef}
+                  className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#2B41B7]"
+                  type="file"
+                  accept="video/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    const input = e.target;
+                    const file = input.files?.[0] ?? null;
+                    if (file) {
+                      const err = validateMediaFileSize(file);
+                      if (err) {
+                        alert(err);
+                        input.value = "";
+                        setEventPhoto(null);
+                        return;
+                      }
+                    }
+                    setEventPhoto(file);
+                    if (coverImageInputRef.current) coverImageInputRef.current.value = "";
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Attach one cover: choosing an image or video replaces the other.
+              </p>
             </div>
 
             <div className="flex justify-end pt-1">

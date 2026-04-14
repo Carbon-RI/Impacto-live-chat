@@ -10,7 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { uploadToCloudinary } from "@/utils/cloudinary";
-import { validateMediaFileSize } from "@/utils/fileLimits";
+import { validateMediaFileByMimeType } from "@/utils/fileLimits";
 import { inferMediaTypeFromUrl } from "@/utils/media";
 import type { EventRow } from "@/types/events";
 import type { Session } from "@supabase/supabase-js";
@@ -74,7 +74,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [chatText, setChatText] = useState("");
-  const [chatMedia, setChatMedia] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pendingNewBelow, setPendingNewBelow] = useState(0);
   const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null);
   const [chatFormError, setChatFormError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
   const openRafRef = useRef<number | null>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const messageContentRef = useRef<HTMLDivElement>(null);
-  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
 
@@ -492,11 +492,11 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
     if (isSending) return;
     setChatFormError(null);
     const text = chatText.trim();
-    if (!text && !chatMedia) return;
+    if (!text && !selectedFile) return;
     setIsSending(true);
     let mediaUrl: string | null = null;
-    if (chatMedia) {
-      const sizeError = validateMediaFileSize(chatMedia);
+    if (selectedFile) {
+      const sizeError = validateMediaFileByMimeType(selectedFile);
       if (sizeError) {
         alert(sizeError);
         setIsSending(false);
@@ -509,7 +509,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
         return;
       }
       try {
-        mediaUrl = await uploadToCloudinary(chatMedia, accessToken);
+        mediaUrl = await uploadToCloudinary(selectedFile, accessToken);
       } catch (uploadErr) {
         setChatFormError(
           uploadErr instanceof Error ? uploadErr.message : "Upload failed"
@@ -554,8 +554,8 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
     stickToBottomRef.current = true;
     setPendingNewBelow(0);
     setChatText("");
-    setChatMedia(null);
-    if (chatFileInputRef.current) chatFileInputRef.current.value = "";
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setIsSending(false);
   }
 
@@ -802,27 +802,37 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
               onChange={(e) => setChatText(e.target.value)}
             />
             <div className="flex w-full min-w-0 items-stretch gap-2">
-              <div className="flex min-h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded bg-white/10 px-2 py-1">
-                <input
-                  ref={chatFileInputRef}
-                  className="w-full min-w-0 cursor-pointer text-sm text-white file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-white/20 file:px-2 file:py-1 file:text-sm file:font-medium file:text-white hover:file:bg-white/30"
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={(e) => {
-                    const input = e.target;
-                    const file = input.files?.[0] ?? null;
-                    if (file) {
-                      const err = validateMediaFileSize(file);
-                      if (err) {
-                        alert(err);
-                        input.value = "";
-                        setChatMedia(null);
-                        return;
+              <div className="flex min-h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded bg-white/10 px-3 py-2">
+                <label
+                  className="flex min-h-[26px] min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm font-medium text-white/95"
+                  aria-label="Add media"
+                >
+                  <span className="shrink-0 text-base leading-none" aria-hidden>
+                    {"\uD83D\uDCCE"}
+                  </span>
+                  <span className="min-w-0 truncate">Add media</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="sr-only"
+                    accept="image/*,video/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      const input = e.target;
+                      const file = input.files?.[0] ?? null;
+                      if (file) {
+                        const err = validateMediaFileByMimeType(file);
+                        if (err) {
+                          alert(err);
+                          input.value = "";
+                          setSelectedFile(null);
+                          return;
+                        }
                       }
-                    }
-                    setChatMedia(file);
-                  }}
-                />
+                      setSelectedFile(file);
+                    }}
+                  />
+                </label>
               </div>
               <button
                 className="shrink-0 self-center rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3] disabled:opacity-60"
