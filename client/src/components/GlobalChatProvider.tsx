@@ -627,7 +627,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
 
       {activeChatEvent ? (
         <section
-          className={`fixed bottom-4 right-4 z-50 flex h-[80vh] w-[min(96vw,460px)] flex-col rounded-2xl border border-gray-200 bg-white p-4 text-black shadow-2xl transition-transform duration-500 ease-in-out ${
+          className={`fixed bottom-4 right-4 z-50 flex h-[80vh] w-[min(96vw,460px)] flex-col rounded-2xl border border-white/20 bg-black/85 p-4 text-white shadow-2xl backdrop-blur-sm transition-transform duration-500 ease-in-out ${
             isChatModalOpen
               ? "translate-y-0"
               : "translate-y-[calc(100%+2rem)] pointer-events-none"
@@ -637,7 +637,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
             <h2 className="text-xl font-semibold">{activeChatEvent.title} chat</h2>
             <button
               type="button"
-              className="rounded border border-gray-300 bg-white px-3 py-1 text-sm text-black"
+              className="px-2 py-1 text-sm text-white/90"
               onClick={minimizeChatPanel}
             >
               Close
@@ -648,7 +648,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
             <div
               ref={messageListRef}
               onScroll={syncStickToBottomFromScroll}
-              className="h-full min-h-0 overflow-y-auto rounded border bg-gray-50 p-3"
+              className="h-full min-h-0 overflow-y-auto rounded p-3"
             >
               <div ref={messageContentRef}>
                 {messages.map((message) => {
@@ -658,13 +658,11 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
                   const meta = (
                     <div
                       className={`w-28 shrink-0 text-xs ${
-                        isOwn ? "text-right text-gray-500" : "text-left text-gray-500"
+                        isOwn ? "text-right text-white/70" : "text-left text-white/70"
                       }`}
                     >
                       <div>{formatTime(message.created_at)}</div>
-                      <div
-                        className={`font-semibold ${isOwn ? "text-gray-600" : "text-gray-700"}`}
-                      >
+                      <div className="font-semibold text-white/85">
                         {profiles[message.user_id] ?? message.user_id.slice(0, 8)}
                       </div>
                     </div>
@@ -672,10 +670,8 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
 
                   const bubble = (
                     <div
-                      className={`max-w-[min(100%,280px)] rounded-lg border p-2 ${
-                        isOwn
-                          ? "border-blue-600 bg-blue-500 text-white"
-                          : "border-gray-300 bg-gray-200 text-gray-900"
+                      className={`max-w-[min(100%,280px)] rounded-lg p-2 text-white ${
+                        isOwn ? "bg-white/12" : "bg-black/35"
                       }`}
                     >
                       {message.content ? (
@@ -706,7 +702,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
                             href={message.media_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`mt-2 block text-sm underline ${isOwn ? "text-white" : "text-blue-700"}`}
+                            className="mt-2 block text-sm underline text-white"
                           >
                             Open attachment
                           </a>
@@ -715,10 +711,36 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
                     </div>
                   );
 
+                  const deleteButton = showDelete ? (
+                    <button
+                      type="button"
+                      className="rounded-full bg-white/10 p-1.5 text-white opacity-0 transition-all duration-150 group-hover:opacity-100 hover:scale-105 hover:bg-red-500/85 focus:opacity-100"
+                      onClick={() => void deleteMessage(message.id)}
+                      aria-label="Delete message"
+                      title="Delete message"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="h-3.5 w-3.5"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                      </svg>
+                    </button>
+                  ) : null;
+
                   return (
                     <div
                       key={message.id}
-                      className={`relative mb-3 flex w-full pr-14 ${
+                      className={`group mb-3 flex w-full ${
                         isOwn ? "justify-end" : "justify-start"
                       }`}
                     >
@@ -729,25 +751,22 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
                       >
                         {isOwn ? (
                           <>
-                            {bubble}
+                            <div className="flex items-start gap-1.5">
+                              {deleteButton}
+                              {bubble}
+                            </div>
                             {meta}
                           </>
                         ) : (
                           <>
                             {meta}
-                            {bubble}
+                            <div className="flex items-start gap-1.5">
+                              {bubble}
+                              {deleteButton}
+                            </div>
                           </>
                         )}
                       </div>
-                      {showDelete ? (
-                        <button
-                          type="button"
-                          className="absolute right-0 top-1/2 -translate-y-1/2 rounded border border-red-400 px-2 py-1 text-xs text-red-600"
-                          onClick={() => void deleteMessage(message.id)}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
                     </div>
                   );
                 })}
@@ -756,7 +775,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
             {pendingNewBelow > 0 ? (
               <button
                 type="button"
-                className="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition hover:bg-blue-700"
+                className="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-full bg-[#2B41B7] px-4 py-2 text-sm font-medium text-white shadow-lg transition hover:bg-[#2438A3]"
                 onClick={() => scrollMessageListToBottom("smooth")}
               >
                 <span>New Message↓</span>
@@ -768,7 +787,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
           </div>
 
           {chatFormError ? (
-            <div className="mb-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mb-2 rounded px-3 py-2 text-sm text-red-300">
               {chatFormError}
             </div>
           ) : null}
@@ -777,16 +796,16 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
             onSubmit={(e) => void sendMessage(e)}
           >
             <input
-              className="w-full min-w-0 rounded border border-gray-300 bg-white px-3 py-2 text-black placeholder:text-gray-500"
+              className="w-full min-w-0 rounded bg-white/10 px-3 py-2 text-white placeholder:text-white/60"
               placeholder="Write a message..."
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
             />
             <div className="flex w-full min-w-0 items-stretch gap-2">
-              <div className="flex min-h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded border border-gray-300 bg-gray-50 px-2 py-1">
+              <div className="flex min-h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded bg-white/10 px-2 py-1">
                 <input
                   ref={chatFileInputRef}
-                  className="w-full min-w-0 cursor-pointer text-sm text-black file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-white file:px-2 file:py-1 file:text-sm file:font-medium file:text-gray-800 hover:file:bg-gray-100"
+                  className="w-full min-w-0 cursor-pointer text-sm text-white file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-white/20 file:px-2 file:py-1 file:text-sm file:font-medium file:text-white hover:file:bg-white/30"
                   type="file"
                   accept="image/*,video/*"
                   onChange={(e) => {
@@ -806,7 +825,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
                 />
               </div>
               <button
-                className="shrink-0 self-center rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-60"
+                className="shrink-0 self-center rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3] disabled:opacity-60"
                 type="submit"
                 disabled={isSending}
               >
@@ -820,7 +839,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
       {showChatTab && chatTabEvent ? (
         <button
           type="button"
-          className="fixed bottom-0 right-4 z-40 flex max-w-[min(92vw,280px)] items-center gap-2 rounded-t-xl border border-b-0 border-blue-700 bg-blue-600 px-4 py-2.5 text-left text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+          className="fixed bottom-0 right-4 z-40 flex max-w-[min(92vw,280px)] items-center gap-2 rounded-t-xl border border-b-0 border-[#2438A3] bg-[#2B41B7] px-4 py-2 text-left text-sm font-semibold text-white shadow-lg transition hover:bg-[#2438A3] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B41B7] focus-visible:ring-offset-2"
           onClick={() => handleChatTabClick()}
           aria-label="Open chat"
         >
@@ -828,7 +847,7 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
             Chat
           </span>
           <span className="min-w-0 flex-1 truncate">{chatTabEvent.title}</span>
-          <span className="shrink-0 text-xs opacity-90" aria-hidden>
+          <span className="shrink-0 text-[10px] opacity-85" aria-hidden>
             ▲
           </span>
         </button>

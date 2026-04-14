@@ -132,24 +132,24 @@ export default function NewEventPage() {
   }
 
   if (loading || !user) {
-    return <main className="min-h-screen bg-white p-8 text-black">Loading...</main>;
+    return <main className="min-h-screen bg-[#F8FAFC] p-8 text-black">Loading...</main>;
   }
 
   return (
-    <main className="min-h-screen bg-white p-6 text-black">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <main className="min-h-screen bg-[#F8FAFC] px-4 py-8 text-black">
+      <div className="mx-auto flex w-full max-w-[600px] flex-col gap-7">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold">Create event</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Create event</h1>
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/"
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900"
+              className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-50"
             >
               Back to events
             </Link>
             <button
               type="button"
-              className="rounded bg-gray-900 px-4 py-2 text-white"
+              className="rounded-lg bg-[#2B41B7] px-3 py-2 text-sm text-white transition hover:bg-[#2438A3]"
               onClick={() => void supabase.auth.signOut()}
             >
               Sign out
@@ -163,88 +163,119 @@ export default function NewEventPage() {
           </div>
         ) : null}
 
-        <section className="rounded-xl border p-4">
-          <form className="grid gap-3 md:grid-cols-2" onSubmit={(e) => void handleCreateEvent(e)}>
-            <input
-              className="rounded border px-3 py-2"
-              placeholder="Title"
-              value={eventForm.title}
-              onChange={(e) =>
-                setEventForm((prev) => ({ ...prev, title: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border px-3 py-2"
-              placeholder="Category"
-              value={eventForm.category}
-              onChange={(e) =>
-                setEventForm((prev) => ({ ...prev, category: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border px-3 py-2 md:col-span-2"
-              placeholder="Overview"
-              value={eventForm.description}
-              onChange={(e) =>
-                setEventForm((prev) => ({ ...prev, description: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border px-3 py-2"
-              placeholder="Location"
-              value={eventForm.location}
-              onChange={(e) =>
-                setEventForm((prev) => ({ ...prev, location: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border px-3 py-2"
-              type="datetime-local"
-              value={eventForm.startAt}
-              onChange={(e) =>
-                setEventForm((prev) => ({ ...prev, startAt: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border px-3 py-2"
-              type="datetime-local"
-              value={eventForm.endAt}
-              onChange={(e) =>
-                setEventForm((prev) => ({ ...prev, endAt: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border px-3 py-2"
-              type="file"
-              accept="image/*,video/*"
-              onChange={(e) => {
-                const input = e.target;
-                const file = input.files?.[0] ?? null;
-                if (file) {
-                  const err = validateMediaFileSize(file);
-                  if (err) {
-                    alert(err);
-                    input.value = "";
-                    setEventPhoto(null);
-                    return;
-                  }
+        <section className="rounded-xl border border-[#E2E8F0] bg-white p-7 shadow-sm">
+          <form className="space-y-6" onSubmit={(e) => void handleCreateEvent(e)}>
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Title</label>
+              <input
+                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
+                placeholder="e.g. Product Meetup"
+                value={eventForm.title}
+                onChange={(e) =>
+                  setEventForm((prev) => ({ ...prev, title: e.target.value }))
                 }
-                setEventPhoto(file);
-              }}
-            />
-            <button
-              className="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-60"
-              type="submit"
-              disabled={submitting}
-            >
-              {submitting ? "Creating..." : "Create"}
-            </button>
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Category</label>
+              <input
+                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
+                placeholder="e.g. Networking"
+                value={eventForm.category}
+                onChange={(e) =>
+                  setEventForm((prev) => ({ ...prev, category: e.target.value }))
+                }
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Overview</label>
+              <input
+                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
+                placeholder="Brief description"
+                value={eventForm.description}
+                onChange={(e) =>
+                  setEventForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Location</label>
+              <input
+                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
+                placeholder="e.g. Tokyo"
+                value={eventForm.location}
+                onChange={(e) =>
+                  setEventForm((prev) => ({ ...prev, location: e.target.value }))
+                }
+                required
+              />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">Start time</label>
+                <input
+                  className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
+                  type="datetime-local"
+                  value={eventForm.startAt}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({ ...prev, startAt: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">End time</label>
+                <input
+                  className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
+                  type="datetime-local"
+                  value={eventForm.endAt}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({ ...prev, endAt: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">Cover media</label>
+              <input
+                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#2B41B7]"
+                type="file"
+                accept="image/*,video/*"
+                onChange={(e) => {
+                  const input = e.target;
+                  const file = input.files?.[0] ?? null;
+                  if (file) {
+                    const err = validateMediaFileSize(file);
+                    if (err) {
+                      alert(err);
+                      input.value = "";
+                      setEventPhoto(null);
+                      return;
+                    }
+                  }
+                  setEventPhoto(file);
+                }}
+              />
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                className="rounded-lg bg-[#2B41B7] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2438A3] disabled:opacity-60"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Creating..." : "Create"}
+              </button>
+            </div>
           </form>
         </section>
       </div>

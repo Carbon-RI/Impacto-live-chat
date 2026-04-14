@@ -215,12 +215,12 @@ export default function TopPage() {
   }
 
   if (loading) {
-    return <main className="min-h-screen bg-white p-8 text-black">Loading...</main>;
+    return <main className="min-h-screen bg-[#F8FAFC] p-8 text-black">Loading...</main>;
   }
 
   return (
-    <main className="min-h-screen bg-white p-6 text-black">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <main className="min-h-screen bg-[#F8FAFC] p-8 text-black">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-7">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold">
             {user ? "Events" : "Sign in"}
@@ -229,13 +229,13 @@ export default function TopPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 href="/events/new"
-                className="rounded bg-emerald-600 px-4 py-2 text-white"
+                className="rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3]"
               >
                 CreateEvent
               </Link>
               <button
                 type="button"
-                className="rounded bg-gray-900 px-4 py-2 text-white"
+                className="rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3]"
                 onClick={() => void supabase.auth.signOut()}
               >
                 Sign out
@@ -251,14 +251,14 @@ export default function TopPage() {
         ) : null}
 
         {!user ? (
-          <section className="rounded-xl border p-4">
+          <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-xl font-semibold">
               {authMode === "sign-in" ? "Sign in" : "Sign up"}
             </h2>
-            <form className="grid gap-3" onSubmit={handleAuthSubmit}>
+            <form className="grid gap-4" onSubmit={handleAuthSubmit}>
               {authMode === "sign-up" ? (
                 <input
-                  className="rounded border px-3 py-2"
+                  className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
                   placeholder="Name"
                   value={authForm.name}
                   onChange={(e) =>
@@ -267,7 +267,7 @@ export default function TopPage() {
                 />
               ) : null}
               <input
-                className="rounded border px-3 py-2"
+                className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
                 type="email"
                 placeholder="Email"
                 value={authForm.email}
@@ -277,7 +277,7 @@ export default function TopPage() {
                 required
               />
               <input
-                className="rounded border px-3 py-2"
+                className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 outline-none transition focus:border-[#2B41B7]"
                 type="password"
                 placeholder="Password"
                 value={authForm.password}
@@ -287,12 +287,15 @@ export default function TopPage() {
                 required
               />
               <div className="flex items-center gap-3">
-                <button className="rounded bg-blue-600 px-4 py-2 text-white" type="submit">
+                <button
+                  className="rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3]"
+                  type="submit"
+                >
                   {authMode === "sign-in" ? "Login" : "Register"}
                 </button>
                 <button
                   type="button"
-                  className="text-sm text-blue-700 underline"
+                  className="text-sm text-[#2B41B7] underline"
                   onClick={() =>
                     setAuthMode((prev) => (prev === "sign-in" ? "sign-up" : "sign-in"))
                   }
@@ -307,9 +310,9 @@ export default function TopPage() {
         ) : null}
 
         {user ? (
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="grid gap-7 md:gap-5 md:grid-cols-2">
             {events.length === 0 ? (
-              <div className="rounded-xl border border-dashed p-4 text-sm text-gray-600">
+              <div className="rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600">
                 No events yet.
               </div>
             ) : null}
@@ -318,12 +321,15 @@ export default function TopPage() {
               const isJoined = joinedEventIds.has(event.id);
               const canJoinChat = event.is_chat_opened && (isJoined || isOrganizer);
               return (
-                <article key={event.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                <article
+                  key={event.id}
+                  className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
+                >
                   {event.image_url ? (
                     inferMediaTypeFromUrl(event.image_url) === "video" ? (
                       <video
                         src={event.image_url}
-                        className="mb-3 h-40 w-full rounded object-cover bg-black"
+                        className="mb-3 h-32 w-full rounded object-cover bg-black md:h-36"
                         controls
                         playsInline
                         preload="metadata"
@@ -332,29 +338,31 @@ export default function TopPage() {
                       <img
                         src={event.image_url}
                         alt={event.title}
-                        className="mb-3 h-40 w-full rounded object-cover"
+                        className="mb-3 h-32 w-full rounded object-cover md:h-36"
                       />
                     )
                   ) : null}
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <h3 className="text-xl font-semibold">{event.title}</h3>
                     {isJoined && !isOrganizer ? (
-                      <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                      <span className="shrink-0 rounded-full bg-[#D4E157] px-2.5 py-0.5 text-xs font-semibold text-[#1E293B]">
                         Joined
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-gray-600">{event.category}</p>
+                  <p className="inline-flex w-fit rounded-full bg-[#D4E157]/40 px-2.5 py-0.5 text-xs font-semibold text-[#1E293B]">
+                    {event.category}
+                  </p>
                   <p className="mt-2 text-sm">{event.description}</p>
                   <p className="mt-2 text-xs text-gray-600">{event.location}</p>
                   <p className="text-xs text-gray-600">
                     {formatTime(event.start_at)} - {formatTime(event.end_at)}
                   </p>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {!isJoined ? (
+                  <div className="mt-4 flex flex-wrap gap-2.5">
+                    {!isJoined && !isOrganizer ? (
                       <button
-                        className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white"
+                        className="rounded-lg bg-[#2B41B7] px-3.5 py-2 text-sm text-white transition hover:bg-[#2438A3]"
                         type="button"
                         onClick={() => void joinEvent(event.id)}
                       >
@@ -363,7 +371,11 @@ export default function TopPage() {
                     ) : null}
                     {isOrganizer ? (
                       <button
-                        className="rounded bg-orange-600 px-3 py-1.5 text-sm text-white"
+                        className={`rounded-lg px-3.5 py-2 text-sm transition ${
+                          event.is_chat_opened
+                            ? "border border-[#CBD5E1] bg-transparent text-[#334155] hover:bg-[#F1F5F9]"
+                            : "bg-[#2B41B7] text-white hover:bg-[#2438A3]"
+                        }`}
                         type="button"
                         onClick={() => void toggleChat(event, !event.is_chat_opened)}
                       >
@@ -372,7 +384,7 @@ export default function TopPage() {
                     ) : null}
                     {canJoinChat ? (
                       <button
-                        className="rounded bg-green-600 px-3 py-1.5 text-sm text-white"
+                        className="rounded-lg bg-[#2B41B7] px-3.5 py-2 text-sm text-white transition hover:bg-[#2438A3]"
                         type="button"
                         onClick={() => openChat(event)}
                       >

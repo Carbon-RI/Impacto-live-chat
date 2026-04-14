@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8fafc;
   --foreground: #171717;
   /* Chat widget (single source for size tokens → h-chat-height / w-chat-width utilities) */
   --chat-panel-width: 350px;
@@ -15,13 +15,6 @@
   --font-mono: var(--font-geist-mono);
   --spacing-chat-width: var(--chat-panel-width);
   --spacing-chat-height: var(--chat-panel-height);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
