@@ -5,6 +5,7 @@ import { uploadToCloudinary } from "@/utils/cloudinary";
 import { validateMediaFileByMimeType } from "@/utils/fileLimits";
 import type { EventRow } from "@/types/events";
 import {
+  broadcastMessageDelete,
   deleteMedia,
   deleteMessage,
   fetchEvents,
@@ -18,6 +19,7 @@ import {
   subscribeChatToggle,
   subscribeEvents,
   subscribeJoinedEvents,
+  subscribeMessageDelete,
   subscribeMessages,
 } from "../api/chatApi";
 import type { CameraMode, ChatMessageRow, UseChatState } from "../types/chat";
@@ -26,6 +28,8 @@ const ACTIVE_CHAT_EVENT_STORAGE_KEY = "active_chat_event_id";
 const SCROLL_BOTTOM_THRESHOLD_PX = 64;
 const CHAT_TOGGLE_CHANNEL = "chat-toggle-events";
 const CHAT_TOGGLE_EVENT = "chat_toggled";
+const MESSAGE_DELETE_CHANNEL = "chat-message-events";
+const MESSAGE_DELETE_EVENT = "message_deleted";
 
 function isScrolledToBottom(el: HTMLElement): boolean {
   const { scrollTop, scrollHeight, clientHeight } = el;
@@ -206,7 +210,8 @@ export function useChat() {
 
     const channel = subscribeMessages(
       activeEventId,
-      (row) => setMessages((prev) => [...prev, row]),
+      (row) =>
+        setMessages((prev) => (prev.some((message) => message.id === row.id) ? prev : [...prev, row])),
       (id) => setMessages((prev) => prev.filter((msg) => msg.id !== id))
     );
 
@@ -335,6 +340,17 @@ export function useChat() {
     };
   }, []);
 
+  useEffect(() => {
+    const channel = subscribeMessageDelete(MESSAGE_DELETE_CHANNEL, MESSAGE_DELETE_EVENT, (next) => {
+      if (!next.eventId || !next.messageId) return;
+      if (activeChatEvent?.id !== next.eventId) return;
+      setMessages((prev) => prev.filter((message) => message.id !== next.messageId));
+    });
+    return () => {
+      void removeRealtimeChannel(channel);
+    };
+  }, [activeChatEvent?.id]);
+
   const openChat = useCallback((event: EventRow) => {
     if (!event.is_chat_opened) return;
     if (closeTimerRef.current) {
@@ -447,6 +463,24 @@ export function useChat() {
           setIsSending(false);
           return;
         }
+
+        type SendMessageResponse = { id?: string };
+        const body = (await response.json().catch(() => null)) as SendMessageResponse | null;
+        if (body?.id) {
+          const optimisticMessage: ChatMessageRow = {
+            id: body.id,
+            event_id: activeChatEvent.id,
+            user_id: user.id,
+            content: text || null,
+            media_url: mediaUrl,
+            created_at: new Date().toISOString(),
+          };
+          setMessages((prev) =>
+            prev.some((message) => message.id === optimisticMessage.id)
+              ? prev
+              : [...prev, optimisticMessage]
+          );
+        }
       } catch (error) {
         setChatFormError(error instanceof Error ? error.message : "Send failed");
         setIsSending(false);
@@ -495,6 +529,11 @@ export function useChat() {
         }
         return;
       }
+
+      await broadcastMessageDelete(MESSAGE_DELETE_CHANNEL, MESSAGE_DELETE_EVENT, {
+        eventId: activeChatEvent.id,
+        messageId,
+      });
 
       if (target?.media_url && session?.access_token) {
         try {

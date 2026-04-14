@@ -108,6 +108,34 @@ export function subscribeChatToggle(
     .subscribe();
 }
 
+export function subscribeMessageDelete(
+  channelName: string,
+  eventName: string,
+  onDelete: (payload: { eventId?: string; messageId?: string }) => void
+): RealtimeChannel {
+  return supabase
+    .channel(channelName)
+    .on("broadcast", { event: eventName }, (payload) =>
+      onDelete(payload.payload as { eventId?: string; messageId?: string })
+    )
+    .subscribe();
+}
+
+export async function broadcastMessageDelete(
+  channelName: string,
+  eventName: string,
+  payload: { eventId: string; messageId: string }
+): Promise<void> {
+  const channel = supabase.channel(channelName);
+  await channel.subscribe();
+  await channel.send({
+    type: "broadcast",
+    event: eventName,
+    payload,
+  });
+  await removeRealtimeChannel(channel);
+}
+
 export async function sendMessage(params: {
   accessToken: string;
   eventId: string;
