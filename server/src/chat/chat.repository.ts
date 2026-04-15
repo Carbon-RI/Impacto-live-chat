@@ -2,8 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export function createChatRepository(supabase: SupabaseClient) {
   return {
-    async insertMessage(input: { eventId: string; userId: string; content: string | null; mediaUrl: string | null }) {
-      return supabase
+    async insertMessage(
+      input: { eventId: string; userId: string; content: string | null; mediaUrl: string | null },
+      client: SupabaseClient = supabase
+    ) {
+      return client
         .from("messages")
         .insert({
           event_id: input.eventId,
@@ -15,8 +18,8 @@ export function createChatRepository(supabase: SupabaseClient) {
         .maybeSingle();
     },
 
-    async fetchEventMessages(eventId: string, limit?: number) {
-      const query = supabase
+    async fetchEventMessages(eventId: string, limit?: number, client: SupabaseClient = supabase) {
+      const query = client
         .from("messages")
         .select("id,event_id,user_id,content,media_url,created_at")
         .eq("event_id", eventId)
@@ -24,6 +27,16 @@ export function createChatRepository(supabase: SupabaseClient) {
 
       if (typeof limit === "number") query.limit(limit);
       return query;
+    },
+
+    async isParticipant(eventId: string, userId: string, client: SupabaseClient = supabase) {
+      const { data, error } = await client
+        .from("event_participants")
+        .select("event_id")
+        .eq("event_id", eventId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      return { isParticipant: Boolean(data), error };
     },
   };
 }

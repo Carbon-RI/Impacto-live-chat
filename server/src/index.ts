@@ -34,6 +34,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const createAuthedClient = (token: string) =>
+  createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -42,7 +47,7 @@ cloudinary.config({
 });
 
 const chatRepository = createChatRepository(supabase);
-const chatService = createChatService({ supabase, repository: chatRepository });
+const chatService = createChatService({ repository: chatRepository, createAuthedClient });
 registerChatHttpRoutes(app, chatService);
 
 app.get("/health", (_req, res) => {
@@ -74,10 +79,7 @@ app.post("/events", async (req, res) => {
     return res.status(400).json({ error: "invalid_payload" });
   }
 
-  const authed = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false },
-  });
+  const authed = createAuthedClient(token);
 
   const { data, error } = await authed
     .from("events")
@@ -96,6 +98,12 @@ app.post("/events", async (req, res) => {
     .maybeSingle();
 
   if (error) return res.status(400).json({ error: error.message });
+  if (data?.id) {
+    const { error: participantError } = await authed
+      .from("event_participants")
+      .insert({ event_id: data.id, user_id: user.id });
+    if (participantError) return res.status(400).json({ error: participantError.message });
+  }
   return res.json({ id: data?.id ?? null });
 });
 

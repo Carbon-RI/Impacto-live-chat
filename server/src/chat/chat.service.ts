@@ -24,15 +24,19 @@ function extractCloudinaryPublicId(mediaUrl: string): string | null {
   }
 }
 
-export function createChatService(params: { supabase: SupabaseClient; repository: ChatRepository }) {
-  const { supabase, repository } = params;
+export function createChatService(params: {
+  repository: ChatRepository;
+  createAuthedClient: (token: string) => SupabaseClient;
+}) {
+  const { repository } = params;
 
   return {
     async getUserIdFromToken(token: string): Promise<string> {
+      const authedClient = params.createAuthedClient(token);
       const {
         data: { user },
         error,
-      } = await supabase.auth.getUser(token);
+      } = await authedClient.auth.getUser();
       if (error || !user?.id) {
         throw new Error("unauthorized");
       }
@@ -40,24 +44,42 @@ export function createChatService(params: { supabase: SupabaseClient; repository
     },
 
     async createMessage(input: { token: string; eventId: string; content: string | null; mediaUrl: string | null }) {
-      const userId = await this.getUserIdFromToken(input.token);
       if (!input.eventId) throw new Error("invalid_payload");
       if (!input.content && !input.mediaUrl) throw new Error("invalid_payload");
       if (input.content && input.content.length > MAX_MESSAGE_TEXT) throw new Error("text_too_long");
+      const authedClient = params.createAuthedClient(input.token);
+      const {
+        data: { user },
+        error: authError,
+      } = await authedClient.auth.getUser();
+      if (authError || !user?.id) throw new Error("unauthorized");
+      const userId = user.id;
+      const { isParticipant, error: participantError } = await repository.isParticipant(input.eventId, userId, authedClient);
+      if (participantError) throw new Error(participantError.message);
+      if (!isParticipant) throw new Error("forbidden");
 
-      const { data, error } = await repository.insertMessage({
-        eventId: input.eventId,
-        userId,
-        content: input.content,
-        mediaUrl: input.mediaUrl,
-      });
+      const { data, error } = await repository.insertMessage(
+        {
+          eventId: input.eventId,
+          userId,
+          content: input.content,
+          mediaUrl: input.mediaUrl,
+        },
+        authedClient
+      );
 
       if (error) throw new Error(error.message);
       return { id: data?.id ?? null, userId };
     },
 
-    async getMessageHistory(eventId: string) {
-      const { data, error } = await repository.fetchEventMessages(eventId, 50);
+    async getMessageHistory(token: string, eventId: string) {
+      const authedClient = params.createAuthedClient(token);
+      const {
+        data: { user },
+        error: authError,
+      } = await authedClient.auth.getUser();
+      if (authError || !user?.id) throw new Error("unauthorized");
+      const { data, error } = await repository.fetchEventMessages(eventId, 50, authedClient);
       if (error) throw new Error(error.message);
 
       return (data ?? [])
@@ -72,7 +94,12 @@ export function createChatService(params: { supabase: SupabaseClient; repository
     },
 
     async createUploadSignature(token: string, env: NodeJS.ProcessEnv) {
-      await this.getUserIdFromToken(token);
+      const authedClient = params.createAuthedClient(token);
+      const {
+        data: { user },
+        error,
+      } = await authedClient.auth.getUser();
+      if (error || !user?.id) throw new Error("unauthorized");
 
       const cloudName = env.CLOUDINARY_CLOUD_NAME?.trim();
       const apiKey = env.CLOUDINARY_API_KEY?.trim();
@@ -95,7 +122,12 @@ export function createChatService(params: { supabase: SupabaseClient; repository
     },
 
     async deleteMedia(token: string, mediaUrl: string) {
-      await this.getUserIdFromToken(token);
+      const authedClient = params.createAuthedClient(token);
+      const {
+        data: { user },
+        error,
+      } = await authedClient.auth.getUser();
+      if (error || !user?.id) throw new Error("unauthorized");
       const publicId = extractCloudinaryPublicId(mediaUrl);
       if (!publicId) throw new Error("invalid_media_url");
 

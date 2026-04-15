@@ -44,7 +44,8 @@ export function registerChatSocket(io: Server, chatService: ChatService) {
 
       socket.join(eventId);
       try {
-        const history = await chatService.getMessageHistory(eventId);
+        const token = socket.handshake.auth.token as string;
+        const history = await chatService.getMessageHistory(token, eventId);
         socket.emit("receive_history", history);
       } catch (error) {
         console.error("Messages fetch error:", error);
