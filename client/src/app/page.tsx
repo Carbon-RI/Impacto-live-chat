@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { publishRealtimeBroadcastRest } from "@/features/chat/api/chatApi";
 import { useChatOpen } from "@/features/chat/components/GlobalChatProvider";
+import { isDemoUiEnabled } from "@/lib/config/demo-client";
 import { supabase } from "@/utils/supabase/client";
 import type { EventRow } from "@/types/events";
 import { inferMediaTypeFromUrl } from "@/utils/media";
@@ -305,13 +306,15 @@ export default function TopPage() {
                     ? "Create a new account"
                     : "Back to sign in"}
                 </button>
-                <Link
-                  href="/demo"
-                  prefetch={false}
-                  className="rounded-lg border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#334155] transition hover:bg-[#F1F5F9]"
-                >
-                  Demo
-                </Link>
+                {isDemoUiEnabled() ? (
+                  <Link
+                    href="/demo"
+                    prefetch={false}
+                    className="rounded-lg border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#334155] transition hover:bg-[#F1F5F9]"
+                  >
+                    Demo
+                  </Link>
+                ) : null}
               </div>
             </form>
           </section>
