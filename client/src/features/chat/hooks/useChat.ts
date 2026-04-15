@@ -530,10 +530,14 @@ export function useChat() {
         return;
       }
 
-      await broadcastMessageDelete(MESSAGE_DELETE_CHANNEL, MESSAGE_DELETE_EVENT, {
-        eventId: activeChatEvent.id,
-        messageId,
-      });
+      try {
+        await broadcastMessageDelete(MESSAGE_DELETE_CHANNEL, MESSAGE_DELETE_EVENT, {
+          eventId: activeChatEvent.id,
+          messageId,
+        });
+      } catch {
+        // Best-effort fan-out; peers still observe the delete via `postgres_changes` on `messages`.
+      }
 
       if (target?.media_url && session?.access_token) {
         try {

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { publishRealtimeBroadcastRest } from "@/features/chat/api/chatApi";
 import { useChatOpen } from "@/features/chat/components/GlobalChatProvider";
+import { isDemoUiEnabled } from "@/lib/config/demo-client";
 import { supabase } from "@/utils/supabase/client";
 import type { EventRow } from "@/types/events";
 import { inferMediaTypeFromUrl } from "@/utils/media";
@@ -37,12 +39,17 @@ export default function TopPage() {
   useEffect(() => {
     let active = true;
     async function bootstrap() {
-      const {
-        data: { session: existingSession },
-      } = await supabase.auth.getSession();
-      if (!active) return;
-      setSession(existingSession);
-      setLoading(false);
+      try {
+        const {
+          data: { session: existingSession },
+        } = await supabase.auth.getSession();
+        if (!active) return;
+        setSession(existingSession);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
     }
     void bootstrap();
     const {
@@ -199,14 +206,14 @@ export default function TopPage() {
       setEventChatOpened(event.id, event.is_chat_opened);
       return;
     }
-    const broadcastChannel = supabase.channel(CHAT_TOGGLE_CHANNEL);
-    await broadcastChannel.subscribe();
-    await broadcastChannel.send({
-      type: "broadcast",
-      event: CHAT_TOGGLE_EVENT,
-      payload: { eventId: event.id, isChatOpened: shouldOpen },
-    });
-    void supabase.removeChannel(broadcastChannel);
+    try {
+      await publishRealtimeBroadcastRest(CHAT_TOGGLE_CHANNEL, CHAT_TOGGLE_EVENT, {
+        eventId: event.id,
+        isChatOpened: shouldOpen,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sync chat state to other clients.");
+    }
   }
 
   if (loading) {
@@ -281,7 +288,7 @@ export default function TopPage() {
                 }
                 required
               />
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   className="rounded-lg bg-[#2B41B7] px-4 py-2 text-white transition hover:bg-[#2438A3]"
                   type="submit"
@@ -299,6 +306,15 @@ export default function TopPage() {
                     ? "Create a new account"
                     : "Back to sign in"}
                 </button>
+                {isDemoUiEnabled() ? (
+                  <Link
+                    href="/demo"
+                    prefetch={false}
+                    className="rounded-lg border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#334155] transition hover:bg-[#F1F5F9]"
+                  >
+                    Demo
+                  </Link>
+                ) : null}
               </div>
             </form>
           </section>
