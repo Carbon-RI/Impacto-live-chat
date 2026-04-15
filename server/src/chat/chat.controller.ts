@@ -13,6 +13,7 @@ function getBearerToken(req: Request): string {
 function toStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : "";
   if (message === "unauthorized") return 401;
+  if (message === "forbidden") return 403;
   if (message === "invalid_payload" || message === "invalid_media_url" || message === "text_too_long") return 400;
   if (message === "cloudinary_misconfigured") return 500;
   return 400;
