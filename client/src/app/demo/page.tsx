@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
@@ -80,24 +80,21 @@ async function executeDemoEntry(): Promise<void> {
 export default function DemoPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const ranRef = useRef(false);
 
   useEffect(() => {
-    if (ranRef.current) {
-      return;
-    }
-    ranRef.current = true;
-
+    let active = true;
     let cancelled = false;
 
     void (async () => {
       try {
         await ensureDemoEntry();
-        if (!cancelled) {
+        // Success path: navigate only if this is still the active mount.
+        if (active && !cancelled) {
           router.replace("/");
         }
       } catch (err) {
-        if (!cancelled) {
+        // Error path: show message only if this is still the active mount.
+        if (active && !cancelled) {
           setErrorMessage(formatDemoError(err));
         }
       }
@@ -105,8 +102,9 @@ export default function DemoPage() {
 
     return () => {
       cancelled = true;
+      active = false;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- `useRouter()` is stable; `router` in deps can skip a needed Strict Mode re-entry while `ranRef` stays true
+  }, [router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F8FAFC] p-8 text-black">

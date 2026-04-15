@@ -1,3 +1,20 @@
+/**
+ * Realtime transport layout (client)
+ *
+ * - **REST (`RealtimeChannel.httpSend`)** — publishing *broadcast* events where low latency is not
+ *   required and we want deterministic delivery without `send()`’s implicit WebSocket → REST fallback.
+ *   Used for: chat open/close UI sync, message-delete notifications to other tabs/clients.
+ *
+ * - **WebSocket (implicit via `subscribe()`)** — all *subscriptions*: `postgres_changes` (messages,
+ *   events, participants) and *receiving* broadcast events. This is the normal Realtime connection.
+ *
+ * - **Chat message body** — writes go through `sendMessage()` (HTTP to app server). New rows reach
+ *   clients via `postgres_changes` on `messages`, not via `channel.send()`.
+ *
+ * - **`channel.send()` (WebSocket)** — reserved for future latency-critical client-originated signals
+ *   (e.g. typing, presence). If added, call only from `subscribe((status) => { ... })` after
+ *   `status === "SUBSCRIBED"`, per Supabase Realtime docs; do not rely on REST fallback.
+ */
 import { supabase } from "@/utils/supabase/client";
 import type { RealtimeChannel, Session } from "@supabase/supabase-js";
 import type { EventRow } from "@/types/events";
@@ -26,6 +43,7 @@ export async function fetchEvents(): Promise<EventRow[]> {
   return (data ?? []) as EventRow[];
 }
 
+/** WebSocket: `postgres_changes` listener for the events list. */
 export function subscribeEvents(onRefresh: () => void): RealtimeChannel {
   return supabase
     .channel("global-events-feed")
@@ -42,6 +60,7 @@ export async function fetchJoinedEventIds(userId: string): Promise<Set<string>> 
   return new Set((data ?? []).map((row) => row.event_id as string));
 }
 
+/** WebSocket: `postgres_changes` listener for this user’s event_participants rows. */
 export function subscribeJoinedEvents(userId: string, onRefresh: () => void): RealtimeChannel {
   return supabase
     .channel(`global-participants-${userId}`)
@@ -68,6 +87,7 @@ export async function fetchMessages(eventId: string): Promise<ChatMessageRow[]> 
   return (data ?? []) as ChatMessageRow[];
 }
 
+/** WebSocket: `postgres_changes` on `messages` (chat body sync; writes come from HTTP API + DB). */
 export function subscribeMessages(
   eventId: string,
   onInsert: (row: ChatMessageRow) => void,
@@ -97,6 +117,7 @@ export async function fetchProfiles(userIds: string[]): Promise<ChatProfileRow[]
   return (data ?? []) as ChatProfileRow[];
 }
 
+/** WebSocket: broadcast *receiver* for chat open/close; *publisher* uses `publishRealtimeBroadcastRest`. */
 export function subscribeChatToggle(
   channelName: string,
   eventName: string,
@@ -108,6 +129,7 @@ export function subscribeChatToggle(
     .subscribe();
 }
 
+/** WebSocket: broadcast *receiver* for organizer-driven delete fan-out; *publisher* uses `httpSend`. */
 export function subscribeMessageDelete(
   channelName: string,
   eventName: string,
@@ -121,21 +143,36 @@ export function subscribeMessageDelete(
     .subscribe();
 }
 
+/**
+ * Publishes a broadcast using the Realtime **REST** API (`httpSend`).
+ * No WebSocket `send()` — avoids implicit REST fallback warnings.
+ */
+export async function publishRealtimeBroadcastRest(
+  channelName: string,
+  eventName: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const channel = supabase.channel(channelName);
+  try {
+    const result = await channel.httpSend(eventName, payload);
+    if (!result.success) {
+      throw new Error(result.error || `Realtime broadcast failed (HTTP ${result.status})`);
+    }
+  } finally {
+    await removeRealtimeChannel(channel);
+  }
+}
+
+/** REST broadcast: notify other clients that a message was removed (UI sync). */
 export async function broadcastMessageDelete(
   channelName: string,
   eventName: string,
   payload: { eventId: string; messageId: string }
 ): Promise<void> {
-  const channel = supabase.channel(channelName);
-  await channel.subscribe();
-  await channel.send({
-    type: "broadcast",
-    event: eventName,
-    payload,
-  });
-  await removeRealtimeChannel(channel);
+  await publishRealtimeBroadcastRest(channelName, eventName, payload);
 }
 
+/** HTTP (app server): create message row; clients observe inserts via `subscribeMessages`. */
 export async function sendMessage(params: {
   accessToken: string;
   eventId: string;
