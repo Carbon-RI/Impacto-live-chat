@@ -1,28 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EventCard } from "@/components/EventCard";
 import { publishRealtimeBroadcastRest } from "@/features/chat/api/chatApi";
 import { useChatOpen } from "@/features/chat/components/GlobalChatProvider";
 import { isDemoUiEnabled } from "@/lib/config/demo-client";
 import { supabase } from "@/utils/supabase/client";
 import type { EventRow } from "@/types/events";
-import { inferMediaTypeFromUrl } from "@/utils/media";
 import type { Session } from "@supabase/supabase-js";
 
 type AuthMode = "sign-in" | "sign-up";
 const CHAT_TOGGLE_CHANNEL = "chat-toggle-events";
 const CHAT_TOGGLE_EVENT = "chat_toggled";
-
-function formatTime(input: string): string {
-  return new Date(input).toLocaleString(undefined, {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function TopPage() {
   const { openChat, setEventChatOpened } = useChatOpen();
@@ -35,6 +25,16 @@ export default function TopPage() {
   const [error, setError] = useState<string | null>(null);
 
   const user = session?.user ?? null;
+
+  const { activeEvents, upcomingEvents } = useMemo(() => {
+    const active: EventRow[] = [];
+    const upcoming: EventRow[] = [];
+    for (const e of events) {
+      if (e.is_chat_opened) active.push(e);
+      else upcoming.push(e);
+    }
+    return { activeEvents: active, upcomingEvents: upcoming };
+  }, [events]);
 
   useEffect(() => {
     let active = true;
@@ -321,98 +321,74 @@ export default function TopPage() {
         ) : null}
 
         {user ? (
-          <section className="grid gap-7 md:gap-5 md:grid-cols-2">
-            {events.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600">
-                No events yet.
-              </div>
-            ) : null}
-            {events.map((event, index) => {
-              const isOrganizer = user.id === event.organizer_id;
-              const isJoined = joinedEventIds.has(event.id);
-              const canJoinChat = event.is_chat_opened && (isJoined || isOrganizer);
-              const isLikelyLcpImage = index < 4;
-              return (
-                <article
-                  key={event.id}
-                  className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
-                >
-                  {event.image_url ? (
-                    inferMediaTypeFromUrl(event.image_url) === "video" ? (
-                      <video
-                        src={event.image_url}
-                        className="mb-3 h-32 w-full rounded object-cover bg-black md:h-36"
-                        controls
-                        playsInline
-                        preload="metadata"
+          <div className="flex flex-col gap-10">
+            {activeEvents.length > 0 ? (
+              <section className="flex flex-col gap-4">
+                <h2 className="text-2xl font-semibold tracking-tight text-[#0F172A]">
+                  Active Events
+                </h2>
+                <div className="flex snap-x gap-4 overflow-x-auto pb-2">
+                  {activeEvents.map((event, index) => (
+                    <div
+                      key={event.id}
+                      className="w-[45%] shrink-0 snap-start lg:w-[calc(20%-12px)]"
+                    >
+                      <EventCard
+                        event={event}
+                        userId={user.id}
+                        isJoined={joinedEventIds.has(event.id)}
+                        imageSizes="(max-width: 1023px) 45vw, 20vw"
+                        imagePriority={index === 0}
+                        imageLoading={index > 0 && index < 3 ? "eager" : "lazy"}
+                        onJoin={(eventId) => void joinEvent(eventId)}
+                        onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
+                        onOpenChat={(ev) => openChat(ev)}
                       />
-                    ) : (
-                      <div className="relative mb-3 h-32 w-full overflow-hidden rounded md:h-36">
-                        <Image
-                          src={event.image_url}
-                          alt={event.title}
-                          fill
-                          loading={isLikelyLcpImage ? "eager" : "lazy"}
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                        />
-                      </div>
-                    )
-                  ) : null}
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <h3 className="text-xl font-semibold">{event.title}</h3>
-                    {isJoined && !isOrganizer ? (
-                      <span className="shrink-0 rounded-full bg-[#D4E157] px-2.5 py-0.5 text-xs font-semibold text-[#1E293B]">
-                        Joined
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="inline-flex w-fit rounded-full bg-[#D4E157]/40 px-2.5 py-0.5 text-xs font-semibold text-[#1E293B]">
-                    {event.category}
-                  </p>
-                  <p className="mt-2 text-sm">{event.description}</p>
-                  <p className="mt-2 text-xs text-gray-600">{event.location}</p>
-                  <p className="text-xs text-gray-600">
-                    {formatTime(event.start_at)} - {formatTime(event.end_at)}
-                  </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
-                  <div className="mt-4 flex flex-wrap gap-2.5">
-                    {!isJoined && !isOrganizer ? (
-                      <button
-                        className="rounded-lg bg-[#2B41B7] px-3.5 py-2 text-sm text-white transition hover:bg-[#2438A3]"
-                        type="button"
-                        onClick={() => void joinEvent(event.id)}
-                      >
-                        Join
-                      </button>
-                    ) : null}
-                    {isOrganizer ? (
-                      <button
-                        className={`rounded-lg px-3.5 py-2 text-sm transition ${
-                          event.is_chat_opened
-                            ? "border border-[#CBD5E1] bg-transparent text-[#334155] hover:bg-[#F1F5F9]"
-                            : "bg-[#2B41B7] text-white hover:bg-[#2438A3]"
-                        }`}
-                        type="button"
-                        onClick={() => void toggleChat(event, !event.is_chat_opened)}
-                      >
-                        {event.is_chat_opened ? "CloseChat" : "OpenChat"}
-                      </button>
-                    ) : null}
-                    {canJoinChat ? (
-                      <button
-                        className="rounded-lg bg-[#2B41B7] px-3.5 py-2 text-sm text-white transition hover:bg-[#2438A3]"
-                        type="button"
-                        onClick={() => openChat(event)}
-                      >
-                        JoinChat
-                      </button>
-                    ) : null}
+            <section className="flex flex-col gap-4">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#0F172A]">
+                Upcoming Events
+              </h2>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-4">
+                {events.length === 0 ? (
+                  <div className="col-span-full rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600">
+                    No events yet.
                   </div>
-                </article>
-              );
-            })}
-          </section>
+                ) : upcomingEvents.length === 0 ? (
+                  <div className="col-span-full rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600">
+                    No upcoming events. All listed events are active.
+                  </div>
+                ) : (
+                  upcomingEvents.map((event, index) => {
+                    const isPrimaryLcp = activeEvents.length === 0 && index === 0;
+                    return (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        userId={user.id}
+                        isJoined={joinedEventIds.has(event.id)}
+                        imageSizes="(max-width: 1023px) 50vw, 20vw"
+                        imagePriority={isPrimaryLcp}
+                        imageLoading={
+                          !isPrimaryLcp && activeEvents.length === 0 && index > 0 && index < 4
+                            ? "eager"
+                            : "lazy"
+                        }
+                        onJoin={(eventId) => void joinEvent(eventId)}
+                        onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
+                        onOpenChat={(ev) => openChat(ev)}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            </section>
+          </div>
         ) : null}
       </div>
     </main>
