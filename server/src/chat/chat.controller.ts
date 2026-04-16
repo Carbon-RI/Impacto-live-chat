@@ -1,6 +1,7 @@
 import rateLimit from "express-rate-limit";
 import type { Express, Request } from "express";
 import type { createChatService } from "./chat.service";
+import { validateOrigin } from "../middleware/security";
 
 type ChatService = ReturnType<typeof createChatService>;
 
@@ -33,7 +34,7 @@ export function registerChatHttpRoutes(app: Express, chatService: ChatService) {
       }),
   });
 
-  app.post("/chat/cloudinary/sign-upload", apiLimiter, async (req, res) => {
+  app.post("/chat/cloudinary/sign-upload", validateOrigin, apiLimiter, async (req, res) => {
     const token = getBearerToken(req);
     if (!token) return res.status(401).json({ error: "unauthorized" });
 
@@ -45,7 +46,7 @@ export function registerChatHttpRoutes(app: Express, chatService: ChatService) {
     }
   });
 
-  app.post("/chat/messages", apiLimiter, async (req, res) => {
+  app.post("/chat/messages", validateOrigin, apiLimiter, async (req, res) => {
     const token = getBearerToken(req);
     if (!token) return res.status(401).json({ error: "unauthorized" });
 
@@ -62,7 +63,7 @@ export function registerChatHttpRoutes(app: Express, chatService: ChatService) {
     }
   });
 
-  app.post("/chat/media/delete", async (req, res) => {
+  app.post("/chat/media/delete", validateOrigin, async (req, res) => {
     const token = getBearerToken(req);
     if (!token) return res.status(401).json({ error: "unauthorized" });
 
