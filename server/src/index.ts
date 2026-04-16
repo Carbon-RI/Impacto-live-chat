@@ -10,6 +10,7 @@ import { createChatRepository } from "./chat/chat.repository";
 import { createChatService } from "./chat/chat.service";
 import { registerChatHttpRoutes } from "./chat/chat.controller";
 import { registerChatSocket } from "./chat/chat.socket";
+import { validateOrigin } from "./middleware/security";
 
 const envPath = path.join(__dirname, "..", ".env");
 dotenv.config({ path: envPath });
@@ -54,7 +55,7 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, socketJwtAuth: true });
 });
 
-app.post("/events", async (req, res) => {
+app.post("/events", validateOrigin, async (req, res) => {
   const authHeader = req.header("authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
   if (!token) return res.status(401).json({ error: "unauthorized" });

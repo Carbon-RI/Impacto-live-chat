@@ -1,15 +1,14 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-function createBrowserClient(): SupabaseClient {
+function createSupabaseBrowserClient(): SupabaseClient {
   if (!url || !anonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
-    );
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
   }
-  return createClient(url, anonKey);
+  return createBrowserClient(url, anonKey);
 }
 
 /**
@@ -17,4 +16,4 @@ function createBrowserClient(): SupabaseClient {
  * Anonymous sign-in (signInAnonymously) requires the Anonymous provider to be
  * enabled under Dashboard → Authentication → Providers.
  */
-export const supabase = createBrowserClient();
+export const supabase = createSupabaseBrowserClient();
