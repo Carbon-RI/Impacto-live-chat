@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline';",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com https://impacto-live-chat.onrender.com http://localhost:5001 ws://localhost:5001 http://127.0.0.1:5001 ws://127.0.0.1:5001;",
               `img-src 'self' data: res.cloudinary.com *.supabase.co localhost 127.0.0.1;`, 
+              "media-src 'self' res.cloudinary.com;",
               "font-src 'self';",
               "object-src 'none';",
               "frame-ancestors 'none';",
