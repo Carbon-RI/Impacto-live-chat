@@ -192,20 +192,38 @@ export default function TopPage() {
       )
     );
     setEventChatOpened(event.id, shouldOpen);
-    const { error: updateError } = await supabase
-      .from("events")
-      .update({ is_chat_opened: shouldOpen })
-      .eq("id", event.id);
-    if (updateError) {
-      setError(updateError.message);
-      setEvents((prev) =>
-        prev.map((row) =>
-          row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
-        )
-      );
-      setEventChatOpened(event.id, event.is_chat_opened);
-      return;
+
+    if (shouldOpen) {
+      const { error: rpcError } = await supabase.rpc('open_event_chat', {
+        target_event_id: event.id,
+      });
+      if (rpcError) {
+        setError(rpcError.message);
+        setEvents((prev) =>
+          prev.map((row) =>
+            row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
+          )
+        );
+        setEventChatOpened(event.id, event.is_chat_opened);
+        return;
+      }
+    } else {
+      const { error: updateError } = await supabase
+        .from("events")
+        .update({ is_chat_opened: false })
+        .eq("id", event.id);
+      if (updateError) {
+        setError(updateError.message);
+        setEvents((prev) =>
+          prev.map((row) =>
+            row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
+          )
+        );
+        setEventChatOpened(event.id, event.is_chat_opened);
+        return;
+      }
     }
+
     try {
       await publishRealtimeBroadcastRest(CHAT_TOGGLE_CHANNEL, CHAT_TOGGLE_EVENT, {
         eventId: event.id,
@@ -327,24 +345,20 @@ export default function TopPage() {
                 <h2 className="text-2xl font-semibold tracking-tight text-[#0F172A]">
                   Active Events
                 </h2>
-                <div className="flex snap-x gap-4 overflow-x-auto pb-2">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-4">
                   {activeEvents.map((event, index) => (
-                    <div
+                    <EventCard
                       key={event.id}
-                      className="w-[45%] shrink-0 snap-start lg:w-[calc(20%-12px)]"
-                    >
-                      <EventCard
-                        event={event}
-                        userId={user.id}
-                        isJoined={joinedEventIds.has(event.id)}
-                        imageSizes="(max-width: 1023px) 45vw, 20vw"
-                        imagePriority={index === 0}
-                        imageLoading={index > 0 && index < 3 ? "eager" : "lazy"}
-                        onJoin={(eventId) => void joinEvent(eventId)}
-                        onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
-                        onOpenChat={(ev) => openChat(ev)}
-                      />
-                    </div>
+                      event={event}
+                      userId={user.id}
+                      isJoined={joinedEventIds.has(event.id)}
+                      imageSizes="(max-width: 1023px) 50vw, 20vw"
+                      imagePriority={index === 0}
+                      imageLoading={index > 0 && index < 3 ? "eager" : "lazy"}
+                      onJoin={(eventId) => void joinEvent(eventId)}
+                      onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
+                      onOpenChat={(ev) => openChat(ev)}
+                    />
                   ))}
                 </div>
               </section>

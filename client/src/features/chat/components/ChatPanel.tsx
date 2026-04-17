@@ -77,30 +77,17 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
             >
               <div ref={messageContentRef}>
                 {messages.map((message) => {
-                  const isOwn = user?.id === message.user_id;
+                  const isSystem = Boolean(message.is_system);
+                  const isOwn = Boolean(user?.id === message.user_id && !isSystem);
                   const showDelete = user?.id === activeChatEvent.organizer_id;
+                  const displayName = isSystem
+                    ? "System"
+                    : (profiles[message.user_id] ?? message.user_id.slice(0, 8));
 
-                  const meta = (
-                    <div
-                      className={`w-28 shrink-0 text-xs ${
-                        isOwn ? "text-right text-white/70" : "text-left text-white/70"
-                      }`}
-                    >
-                      <div>{formatTime(message.created_at)}</div>
-                      <div className="font-semibold text-white/85">
-                        {profiles[message.user_id] ?? message.user_id.slice(0, 8)}
-                      </div>
-                    </div>
-                  );
-
-                  const bubble = (
-                    <div
-                      className={`max-w-[min(100%,280px)] rounded-lg p-2 text-white ${
-                        isOwn ? "bg-white/12" : "bg-black/35"
-                      }`}
-                    >
+                  const bubbleBody = (contentTextClassName: string) => (
+                    <>
                       {message.content ? (
-                        <p className="text-sm break-words">{message.content}</p>
+                        <p className={contentTextClassName}>{message.content}</p>
                       ) : null}
                       {message.media_url ? (
                         inferMediaTypeFromUrl(message.media_url) === "image" ? (
@@ -137,7 +124,7 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                           </a>
                         )
                       ) : null}
-                    </div>
+                    </>
                   );
 
                   const deleteButton = showDelete ? (
@@ -165,6 +152,44 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                       </svg>
                     </button>
                   ) : null;
+
+                  if (isSystem) {
+                    return (
+                      <div key={message.id} className="group mb-3 flex w-full justify-center px-1">
+                        <div className="flex w-full max-w-[min(100%,380px)] flex-col gap-1.5">
+                          <div className="flex w-full items-center justify-start gap-2 text-left text-xs text-white/70">
+                            <span>{formatTime(message.created_at)}</span>
+                            <span className="font-semibold text-white/85">System</span>
+                            {deleteButton ? <span className="ml-auto shrink-0">{deleteButton}</span> : null}
+                          </div>
+                          <div className="w-full rounded-lg border border-emerald-400/35 bg-emerald-950/50 px-3 py-2 text-left text-white">
+                            {bubbleBody("text-sm break-words whitespace-pre-wrap text-left")}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const meta = (
+                    <div
+                      className={`w-28 shrink-0 text-xs ${
+                        isOwn ? "text-right text-white/70" : "text-left text-white/70"
+                      }`}
+                    >
+                      <div>{formatTime(message.created_at)}</div>
+                      <div className="font-semibold text-white/85">{displayName}</div>
+                    </div>
+                  );
+
+                  const bubble = (
+                    <div
+                      className={`max-w-[min(100%,280px)] rounded-lg p-2 text-white ${
+                        isOwn ? "bg-white/12" : "bg-black/35"
+                      }`}
+                    >
+                      {bubbleBody("text-sm break-words")}
+                    </div>
+                  );
 
                   return (
                     <div
