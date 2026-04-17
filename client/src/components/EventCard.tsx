@@ -41,7 +41,7 @@ export function EventCard({
 
   return (
     <article
-      className={`flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm ${className}`}
+      className={`flex h-full min-w-0 w-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm ${className}`}
     >
       {event.image_url ? (
         inferMediaTypeFromUrl(event.image_url) === "video" ? (
@@ -67,7 +67,7 @@ export function EventCard({
         )
       ) : null}
       <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
-        <h3 className="text-xl font-semibold">{event.title}</h3>
+        <h3 className="min-w-0 flex-1 text-xl font-semibold break-words">{event.title}</h3>
         {isJoined && !isOrganizer ? (
           <span className="shrink-0 rounded-full bg-[#D4E157] px-2.5 py-0.5 text-xs font-semibold text-[#1E293B]">
             Joined

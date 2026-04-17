@@ -8,6 +8,8 @@ export interface ChatMessageRow {
   content: string | null;
   media_url: string | null;
   created_at: string;
+  /** Server-seeded welcome lines; UI shows as System. */
+  is_system?: boolean | null;
 }
 
 export interface ChatProfileRow {

@@ -80,7 +80,7 @@ export function subscribeJoinedEvents(userId: string, onRefresh: () => void): Re
 export async function fetchMessages(eventId: string): Promise<ChatMessageRow[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id,event_id,user_id,content,media_url,created_at")
+    .select("id,event_id,user_id,content,media_url,created_at,is_system")
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
   if (error) throw error;
