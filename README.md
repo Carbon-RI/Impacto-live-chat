@@ -1,52 +1,80 @@
-# Hybrid Authorization Chat System (Express + Supabase RLS)
+# Impacto LiveChat
 
-A chat infrastructure combining Node.js (Express) and Supabase. Authorization logic is offloaded to the database layer via **Row Level Security (RLS)** to ensure physical data protection.
+## Overview
+A real-time event-based chat system with strict database-level security enforced by Supabase RLS.
+Users can create events, join them, and communicate in real time.
+
+---
 
 ## Architecture
+- **Client**: Next.js (UI + state management)
+- **Server**: Express + Socket.IO (API + real-time layer)
+- **Database**: Supabase (persistent storage + authorization via RLS)
 
-### Dual-Layer Authorization
-- **App Layer (Express)**: Responsible for request validation and user identification from JWT.
-- **DB Layer (Supabase RLS)**: Evaluates the propagated JWT to perform final access control on a per-row basis.
-
-### JWT Propagation
-Inherits the JWT received by the Express server into the Supabase client. This allows the database to enforce user-specific access control using `auth.uid()`.
-
----
-
-## Security Design (RLS Policies)
-
-The following policies are applied to the `messages` table.
-
-### SELECT (Read Access)
-Access is granted only if the `event_id` is linked to the current `auth.uid()` in the `event_participants` table.
-- **Objective**: Structurally block unauthorized access to chat histories of events the user has not joined.
-
-### INSERT (Write Access)
-Permitted only if the `user_id` matches `auth.uid()` and the user is registered as a participant for the target event.
-- **Objective**: Prevent identity spoofing and unauthorized writes to foreign events.
-
----
-
-## Implementation Details
-
-### Atomic Event Creation
-Automatically registers the creator into `event_participants` upon event creation (`/events`). This maintains consistency between the authorization model and the user experience.
-
-### Error Handling
-- **401 Unauthorized**: Authentication failure (invalid or missing token).
-- **403 Forbidden**: Authorization failure (no permission for the event or rejected by RLS).
-- **400 Bad Request**: Malformed request or missing payload.
-
----
-
-## Tech Stack
-- Backend: Node.js / Express / TypeScript
-- Database: Supabase (PostgreSQL)
-- Auth: Supabase Auth (JWT)
-- Realtime: Socket.io (RLS-backed queries)
-- Media: Cloudinary (Signed Uploads)
+The system separates real-time communication (Socket.IO) from persistent storage (Supabase).
 
 ---
 
 ## Development Policy
-Avoid bypassing restrictions with `service_role`. Always use token-scoped clients (`createAuthedClient`) to maintain the database as a secure boundary.
+
+### Security Boundary
+The database is treated as a secure boundary. RLS is never bypassed using the `service_role` key.
+
+### Token-scoped Clients
+All database operations use token-scoped clients to ensure `auth.uid()` is always enforced by PostgreSQL policies.
+
+---
+
+## Key Design Decisions
+
+### 1. Hybrid Authorization (RLS-based Security)
+Authorization logic is offloaded to the database layer via **Row Level Security (RLS)**.
+- **App Layer**: Validates requests and identifies users from JWT.
+- **DB Layer**: Enforces final access control using `auth.uid()`.
+
+The database is treated as the ultimate security boundary. Even if the application layer is compromised, RLS ensures data protection.
+
+### 2. Layered Backend Architecture
+The server follows a strict separation of concerns to ensure maintainability:
+- **Controller**: Request/Response handling.
+- **Service**: Business logic and validation.
+- **Repository**: Pure data access via Supabase.
+
+### 3. Feature-based Frontend Structure
+The client uses a feature-based architecture (`features/chat/`). Each feature encapsulates:
+- UI components
+- Hooks (state management)
+- API logic
+
+---
+
+## Database Management & Structure
+The database is managed to ensure both reproducibility and design clarity:
+- **`db/schema.sql`**: Current full database schema (single source of truth).
+- **`supabase/migrations/`**: Reconstructed schema evolution focused on key design decisions.
+- **`supabase/seed.sql`**: Initial data for local development.
+
+---
+
+## Notes
+- The database was initially created using Supabase Studio (Editor).
+- Migration files are reconstructed to reflect key architectural decisions rather than full history.
+
+---
+
+## Setup
+```bash
+# Install dependencies
+npm install
+
+# Start Supabase local environment
+supabase start
+
+# Reset and seed database
+supabase db reset
+
+# Run server
+cd server && npm run dev
+
+# Run client
+cd client && npm run dev
