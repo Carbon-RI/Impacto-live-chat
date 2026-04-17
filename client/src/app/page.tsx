@@ -345,20 +345,24 @@ export default function TopPage() {
                 <h2 className="text-2xl font-semibold tracking-tight text-[#0F172A]">
                   Active Events
                 </h2>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-4">
+                <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory lg:grid lg:grid-cols-5 lg:gap-4 lg:overflow-visible lg:pb-0">
                   {activeEvents.map((event, index) => (
-                    <EventCard
+                    <div
                       key={event.id}
-                      event={event}
-                      userId={user.id}
-                      isJoined={joinedEventIds.has(event.id)}
-                      imageSizes="(max-width: 1023px) 50vw, 20vw"
-                      imagePriority={index === 0}
-                      imageLoading={index > 0 && index < 3 ? "eager" : "lazy"}
-                      onJoin={(eventId) => void joinEvent(eventId)}
-                      onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
-                      onOpenChat={(ev) => openChat(ev)}
-                    />
+                      className="w-[80%] min-w-[80%] snap-start lg:w-auto lg:min-w-0"
+                    >
+                      <EventCard
+                        event={event}
+                        userId={user.id}
+                        isJoined={joinedEventIds.has(event.id)}
+                        imageSizes="(max-width: 1023px) 50vw, 20vw"
+                        imagePriority={index === 0}
+                        imageLoading={index > 0 && index < 3 ? "eager" : "lazy"}
+                        onJoin={(eventId) => void joinEvent(eventId)}
+                        onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
+                        onOpenChat={(ev) => openChat(ev)}
+                      />
+                    </div>
                   ))}
                 </div>
               </section>
@@ -368,35 +372,39 @@ export default function TopPage() {
               <h2 className="text-2xl font-semibold tracking-tight text-[#0F172A]">
                 Upcoming Events
               </h2>
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-4">
+              <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory lg:grid lg:grid-cols-5 lg:gap-4 lg:overflow-visible lg:pb-0">
                 {events.length === 0 ? (
-                  <div className="col-span-full rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600">
+                  <div className="w-full rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600 lg:col-span-full">
                     No events yet.
                   </div>
                 ) : upcomingEvents.length === 0 ? (
-                  <div className="col-span-full rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600">
+                  <div className="w-full rounded-xl border border-dashed border-[#E2E8F0] bg-white p-5 text-sm text-gray-600 lg:col-span-full">
                     No upcoming events. All listed events are active.
                   </div>
                 ) : (
                   upcomingEvents.map((event, index) => {
                     const isPrimaryLcp = activeEvents.length === 0 && index === 0;
                     return (
-                      <EventCard
+                      <div
                         key={event.id}
-                        event={event}
-                        userId={user.id}
-                        isJoined={joinedEventIds.has(event.id)}
-                        imageSizes="(max-width: 1023px) 50vw, 20vw"
-                        imagePriority={isPrimaryLcp}
-                        imageLoading={
-                          !isPrimaryLcp && activeEvents.length === 0 && index > 0 && index < 4
-                            ? "eager"
-                            : "lazy"
-                        }
-                        onJoin={(eventId) => void joinEvent(eventId)}
-                        onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
-                        onOpenChat={(ev) => openChat(ev)}
-                      />
+                        className="w-[80%] min-w-[80%] snap-start lg:w-auto lg:min-w-0"
+                      >
+                        <EventCard
+                          event={event}
+                          userId={user.id}
+                          isJoined={joinedEventIds.has(event.id)}
+                          imageSizes="(max-width: 1023px) 50vw, 20vw"
+                          imagePriority={isPrimaryLcp}
+                          imageLoading={
+                            !isPrimaryLcp && activeEvents.length === 0 && index > 0 && index < 4
+                              ? "eager"
+                              : "lazy"
+                          }
+                          onJoin={(eventId) => void joinEvent(eventId)}
+                          onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
+                          onOpenChat={(ev) => openChat(ev)}
+                        />
+                      </div>
                     );
                   })
                 )}
