@@ -22,6 +22,9 @@ export type CameraMode = "image" | "video" | null;
 export type ChatOpenContextValue = {
   openChat: (event: EventRow) => void;
   setEventChatOpened: (eventId: string, isChatOpened: boolean) => void;
+  joinedEventIds: Set<string>;
+  joinEvent: (eventId: string) => Promise<string | null>;
+  leaveEvent: (eventId: string) => Promise<string | null>;
 };
 
 export interface UseChatState {

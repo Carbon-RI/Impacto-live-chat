@@ -107,19 +107,19 @@ DECLARE
     is_sent BOOLEAN;
     org_id UUID;
 BEGIN
-    -- 行ロック
+    -- Row lock
     SELECT welcome_sent, organizer_id INTO is_sent, org_id
     FROM events
     WHERE id = target_event_id
     FOR UPDATE;
 
-    -- 主催者チェック
+    -- Organizer authorization check
     IF auth.uid() <> org_id THEN
         RAISE EXCEPTION 'Only the organizer can open the chat.';
     END IF;
 
     IF is_sent = FALSE THEN
-        -- ★修正ポイント：3つのメッセージを1つに統合（改行コード含む）
+        -- Consolidate three lines into one message (including line breaks)
         INSERT INTO messages (event_id, content, user_id, is_system) 
         VALUES 
             (target_event_id, 

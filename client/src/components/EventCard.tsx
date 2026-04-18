@@ -12,6 +12,7 @@ export type EventCardProps = {
   imageLoading?: "eager" | "lazy";
   className?: string;
   onJoin: (eventId: string) => void;
+  onLeave: (eventId: string) => void;
   onToggleChat: (event: EventRow, shouldOpen: boolean) => void;
   onOpenChat: (event: EventRow) => void;
 };
@@ -25,6 +26,7 @@ export function EventCard({
   imageLoading = "lazy",
   className = "",
   onJoin,
+  onLeave,
   onToggleChat,
   onOpenChat,
 }: EventCardProps) {
@@ -90,6 +92,15 @@ export function EventCard({
             onClick={() => onJoin(event.id)}
           >
             Join
+          </button>
+        ) : null}
+        {isJoined && !isOrganizer ? (
+          <button
+            className="shrink-0 whitespace-nowrap rounded-lg border border-[#CBD5E1] bg-white px-3.5 py-2 text-sm text-[#334155] transition hover:bg-[#F1F5F9] xl:px-2.5 xl:py-1.5 xl:text-xs"
+            type="button"
+            onClick={() => onLeave(event.id)}
+          >
+            Leave
           </button>
         ) : null}
         {isOrganizer ? (
