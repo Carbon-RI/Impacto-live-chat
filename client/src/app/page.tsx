@@ -7,12 +7,19 @@ import { publishRealtimeBroadcastRest } from "@/features/chat/api/chatApi";
 import { useChatOpen } from "@/features/chat/components/GlobalChatProvider";
 import { isDemoUiEnabled } from "@/lib/config/demo-client";
 import { supabase } from "@/utils/supabase/client";
+import { inferMediaTypeFromUrl } from "@/utils/media";
 import type { EventRow } from "@/types/events";
 import type { Session } from "@supabase/supabase-js";
 
 type AuthMode = "sign-in" | "sign-up";
 const CHAT_TOGGLE_CHANNEL = "chat-toggle-events";
 const CHAT_TOGGLE_EVENT = "chat_toggled";
+
+function indexOfFirstEventCardImage(events: EventRow[]): number {
+  return events.findIndex(
+    (e) => Boolean(e.image_url) && inferMediaTypeFromUrl(e.image_url) === "image"
+  );
+}
 
 export default function TopPage() {
   const { openChat, setEventChatOpened } = useChatOpen();
@@ -35,6 +42,12 @@ export default function TopPage() {
     }
     return { activeEvents: active, upcomingEvents: upcoming };
   }, [events]);
+
+  const activeFirstImageIndex = useMemo(() => indexOfFirstEventCardImage(activeEvents), [activeEvents]);
+  const upcomingFirstImageIndex = useMemo(
+    () => indexOfFirstEventCardImage(upcomingEvents),
+    [upcomingEvents]
+  );
 
   useEffect(() => {
     let active = true;
@@ -356,8 +369,15 @@ export default function TopPage() {
                         userId={user.id}
                         isJoined={joinedEventIds.has(event.id)}
                         imageSizes="(max-width: 1023px) 50vw, 20vw"
-                        imagePriority={index === 0}
-                        imageLoading={index > 0 && index < 3 ? "eager" : "lazy"}
+                        imagePriority={index === activeFirstImageIndex}
+                        imageLoading={
+                          index !== activeFirstImageIndex &&
+                          activeFirstImageIndex >= 0 &&
+                          index > activeFirstImageIndex &&
+                          index <= activeFirstImageIndex + 2
+                            ? "eager"
+                            : "lazy"
+                        }
                         onJoin={(eventId) => void joinEvent(eventId)}
                         onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
                         onOpenChat={(ev) => openChat(ev)}
@@ -383,7 +403,8 @@ export default function TopPage() {
                   </div>
                 ) : (
                   upcomingEvents.map((event, index) => {
-                    const isPrimaryLcp = activeEvents.length === 0 && index === 0;
+                    const isPrimaryLcp =
+                      activeEvents.length === 0 && index === upcomingFirstImageIndex;
                     return (
                       <div
                         key={event.id}
@@ -396,7 +417,11 @@ export default function TopPage() {
                           imageSizes="(max-width: 1023px) 50vw, 20vw"
                           imagePriority={isPrimaryLcp}
                           imageLoading={
-                            !isPrimaryLcp && activeEvents.length === 0 && index > 0 && index < 4
+                            activeEvents.length === 0 &&
+                            !isPrimaryLcp &&
+                            upcomingFirstImageIndex >= 0 &&
+                            index > upcomingFirstImageIndex &&
+                            index <= upcomingFirstImageIndex + 3
                               ? "eager"
                               : "lazy"
                           }

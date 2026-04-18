@@ -59,7 +59,7 @@ export function EventCard({
               alt={event.title}
               fill
               priority={imagePriority}
-              loading={imagePriority ? undefined : imageLoading}
+              loading={imagePriority ? "eager" : imageLoading}
               className="object-cover"
               sizes={imageSizes}
             />
@@ -83,10 +83,10 @@ export function EventCard({
         {formatTime(event.start_at)} - {formatTime(event.end_at)}
       </p>
 
-      <div className="mt-auto flex flex-wrap gap-2.5 pt-4">
+      <div className="mt-auto flex min-w-0 flex-wrap gap-2 pt-4 xl:flex-nowrap xl:gap-1.5">
         {!isJoined && !isOrganizer ? (
           <button
-            className="rounded-lg bg-[#2B41B7] px-3.5 py-2 text-sm text-white transition hover:bg-[#2438A3]"
+            className="shrink-0 whitespace-nowrap rounded-lg bg-[#1d4ed8] px-3.5 py-2 text-sm text-white transition hover:bg-[#1e40af] xl:px-2.5 xl:py-1.5 xl:text-xs"
             type="button"
             onClick={() => onJoin(event.id)}
           >
@@ -95,7 +95,7 @@ export function EventCard({
         ) : null}
         {isOrganizer ? (
           <button
-            className={`rounded-lg px-3.5 py-2 text-sm transition ${
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm transition xl:px-2.5 xl:py-1.5 xl:text-xs ${
               event.is_chat_opened
                 ? "border border-[#CBD5E1] bg-transparent text-[#334155] hover:bg-[#F1F5F9]"
                 : "bg-[#2B41B7] text-white hover:bg-[#2438A3]"
@@ -108,7 +108,7 @@ export function EventCard({
         ) : null}
         {canJoinChat ? (
           <button
-            className="rounded-lg bg-[#2B41B7] px-3.5 py-2 text-sm text-white transition hover:bg-[#2438A3]"
+            className="shrink-0 whitespace-nowrap rounded-lg bg-[#0d9488] px-3.5 py-2 text-sm text-white transition hover:bg-[#0f766e] xl:px-2.5 xl:py-1.5 xl:text-xs"
             type="button"
             onClick={() => onOpenChat(event)}
           >
