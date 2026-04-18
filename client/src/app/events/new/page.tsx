@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
+import { datetimeLocalInputToUtcIso } from "@/utils/date";
 import { uploadToCloudinary } from "@/utils/cloudinary";
 import { validateMediaFileSize } from "@/utils/fileLimits";
 import type { Session } from "@supabase/supabase-js";
@@ -86,6 +87,18 @@ export default function NewEventPage() {
         return;
       }
     }
+
+    let startAtUtc: string;
+    let endAtUtc: string;
+    try {
+      startAtUtc = datetimeLocalInputToUtcIso(eventForm.startAt);
+      endAtUtc = datetimeLocalInputToUtcIso(eventForm.endAt);
+    } catch (conversionError) {
+      setError(conversionError instanceof Error ? conversionError.message : "Invalid start or end time.");
+      setSubmitting(false);
+      return;
+    }
+
     const createRes = await fetch(`${SERVER_URL}/events`, {
       method: "POST",
       headers: {
@@ -97,8 +110,8 @@ export default function NewEventPage() {
         category: eventForm.category,
         description: eventForm.description,
         location: eventForm.location,
-        start_at: eventForm.startAt,
-        end_at: eventForm.endAt,
+        start_at: startAtUtc,
+        end_at: endAtUtc,
         image_url: photoUrl,
       }),
     });

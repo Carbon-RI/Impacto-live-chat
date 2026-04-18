@@ -1,15 +1,7 @@
 import Image from "next/image";
+import { formatDateTime } from "@/utils/date";
 import { inferMediaTypeFromUrl } from "@/utils/media";
 import type { EventRow } from "@/types/events";
-
-function formatTime(input: string): string {
-  return new Date(input).toLocaleString(undefined, {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export type EventCardProps = {
   event: EventRow;
@@ -79,9 +71,16 @@ export function EventCard({
       </p>
       <p className="mt-2 text-sm">{event.description}</p>
       <p className="mt-2 text-xs text-gray-600">{event.location}</p>
-      <p className="text-xs text-gray-600">
-        {formatTime(event.start_at)} - {formatTime(event.end_at)}
+      <p className="text-xs text-gray-600 md:hidden">
+        {formatDateTime(event.start_at)} - {formatDateTime(event.end_at)}
       </p>
+      <div className="hidden text-xs text-gray-600 md:block">
+        <p>{formatDateTime(event.start_at)}</p>
+        <p>
+          {"- "}
+          {formatDateTime(event.end_at)}
+        </p>
+      </div>
 
       <div className="mt-auto flex min-w-0 flex-wrap gap-2 pt-4 xl:flex-nowrap xl:gap-1.5">
         {!isJoined && !isOrganizer ? (

@@ -2,17 +2,9 @@
 
 import CameraCaptureModal from "@/components/CameraCaptureModal";
 import Image from "next/image";
+import { formatChatMessageDateLine, formatChatMessageTimeOnly, formatDateTime } from "@/utils/date";
 import { validateMediaFileByMimeType } from "@/utils/fileLimits";
 import { inferMediaTypeFromUrl } from "@/utils/media";
-
-function formatTime(input: string): string {
-  return new Date(input).toLocaleString(undefined, {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/useChat").useChat> }) {
   const {
@@ -84,7 +76,7 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                     ? "System"
                     : (profiles[message.user_id] ?? message.user_id.slice(0, 8));
 
-                  const bubbleBody = (contentTextClassName: string) => (
+                  const bubbleBody = (contentTextClassName: string, mediaAlignClass: string) => (
                     <>
                       {message.content ? (
                         <p className={contentTextClassName}>{message.content}</p>
@@ -93,7 +85,7 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                         inferMediaTypeFromUrl(message.media_url) === "image" ? (
                           <button
                             type="button"
-                            className="mt-2 block w-full cursor-zoom-in rounded p-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                            className={`mt-2 block w-full cursor-zoom-in rounded p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${mediaAlignClass}`}
                             onClick={() => setImageLightboxUrl(message.media_url!)}
                           >
                             <div className="relative h-36 w-[200px]">
@@ -130,7 +122,7 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                   const deleteButton = showDelete ? (
                     <button
                       type="button"
-                      className="rounded-full bg-white/10 p-1.5 text-white opacity-0 transition-all duration-150 group-hover:opacity-100 hover:scale-105 hover:bg-red-500/85 focus:opacity-100"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/15 text-white opacity-0 shadow-sm transition-all duration-150 group-hover:opacity-100 hover:bg-red-500/90 hover:shadow-md focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40"
                       onClick={() => void removeMessage(message.id)}
                       aria-label="Delete message"
                       title="Delete message"
@@ -141,7 +133,7 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
-                        className="h-3.5 w-3.5"
+                        className="h-4 w-4"
                         aria-hidden="true"
                       >
                         <path d="M3 6h18" />
@@ -158,68 +150,69 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                       <div key={message.id} className="group mb-3 flex w-full justify-center px-1">
                         <div className="flex w-full max-w-[min(100%,380px)] flex-col gap-1.5">
                           <div className="flex w-full items-center justify-start gap-2 text-left text-xs text-white/70">
-                            <span>{formatTime(message.created_at)}</span>
+                            <span>{formatDateTime(message.created_at)}</span>
                             <span className="font-semibold text-white/85">System</span>
                             {deleteButton ? <span className="ml-auto shrink-0">{deleteButton}</span> : null}
                           </div>
                           <div className="w-full rounded-lg border border-emerald-400/35 bg-emerald-950/50 px-3 py-2 text-left text-white">
-                            {bubbleBody("text-sm break-words whitespace-pre-wrap text-left")}
+                            {bubbleBody("text-sm break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-left", "text-left")}
                           </div>
                         </div>
                       </div>
                     );
                   }
 
-                  const meta = (
+                  const metaLines = (
                     <div
-                      className={`w-28 shrink-0 text-xs ${
-                        isOwn ? "text-right text-white/70" : "text-left text-white/70"
+                      className={`max-w-[10rem] text-xs leading-snug text-white/55 ${
+                        isOwn ? "text-right" : "text-left"
                       }`}
                     >
-                      <div>{formatTime(message.created_at)}</div>
-                      <div className="font-semibold text-white/85">{displayName}</div>
+                      <div className="block">{formatChatMessageDateLine(message.created_at)}</div>
+                      <div className="block break-words">
+                        {formatChatMessageTimeOnly(message.created_at)} {displayName}
+                      </div>
                     </div>
                   );
 
+                  const bubbleTextClass = isOwn
+                    ? "text-sm break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-right"
+                    : "text-sm break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-left";
+                  const bubbleMediaAlign = isOwn ? "text-right" : "text-left";
+
                   const bubble = (
                     <div
-                      className={`max-w-[min(100%,280px)] rounded-lg p-2 text-white ${
-                        isOwn ? "bg-white/12" : "bg-black/35"
+                      className={`min-w-0 max-w-[min(100%,280px)] rounded-lg p-2 text-white [overflow-wrap:anywhere] break-words ${
+                        isOwn ? "bg-white/12 text-right" : "bg-black/35 text-left"
                       }`}
                     >
-                      {bubbleBody("text-sm break-words")}
+                      {bubbleBody(bubbleTextClass, bubbleMediaAlign)}
                     </div>
                   );
 
                   return (
                     <div
                       key={message.id}
-                      className={`group mb-3 flex w-full ${
+                      className={`group mb-3 flex w-full min-w-0 ${
                         isOwn ? "justify-end" : "justify-start"
                       }`}
                     >
                       <div
-                        className={`flex max-w-[min(100%,380px)] items-start gap-2 ${
-                          isOwn ? "flex-row-reverse" : "flex-row"
+                        className={`flex max-w-[min(100%,380px)] min-w-0 items-start gap-3 ${
+                          isOwn ? "flex-row" : "flex-row-reverse"
                         }`}
                       >
-                        {isOwn ? (
-                          <>
-                            <div className="flex items-start gap-1.5">
-                              {deleteButton}
-                              {bubble}
-                            </div>
-                            {meta}
-                          </>
-                        ) : (
-                          <>
-                            {meta}
-                            <div className="flex items-start gap-1.5">
-                              {bubble}
-                              {deleteButton}
-                            </div>
-                          </>
-                        )}
+                        <div className="flex shrink-0 items-center gap-2.5">
+                          {metaLines}
+                          {deleteButton}
+                        </div>
+                        <div
+                          className={`flex min-w-0 flex-1 items-start ${
+                            isOwn ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          {bubble}
+                        </div>
                       </div>
                     </div>
                   );

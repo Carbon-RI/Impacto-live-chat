@@ -11,6 +11,7 @@ import { createChatService } from "./chat/chat.service";
 import { registerChatHttpRoutes } from "./chat/chat.controller";
 import { registerChatSocket } from "./chat/chat.socket";
 import { validateOrigin } from "./middleware/security";
+import { toUtcIsoString } from "./utils/date";
 
 const envPath = path.join(__dirname, "..", ".env");
 dotenv.config({ path: envPath });
@@ -80,6 +81,15 @@ app.post("/events", validateOrigin, async (req, res) => {
     return res.status(400).json({ error: "invalid_payload" });
   }
 
+  let startAtUtc: string;
+  let endAtUtc: string;
+  try {
+    startAtUtc = toUtcIsoString(start_at);
+    endAtUtc = toUtcIsoString(end_at);
+  } catch {
+    return res.status(400).json({ error: "invalid_datetime" });
+  }
+
   const authed = createAuthedClient(token);
 
   const { data, error } = await authed
@@ -90,8 +100,8 @@ app.post("/events", validateOrigin, async (req, res) => {
       category,
       description,
       location,
-      start_at,
-      end_at,
+      start_at: startAtUtc,
+      end_at: endAtUtc,
       image_url,
       is_chat_opened: false,
     })
