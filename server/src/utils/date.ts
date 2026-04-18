@@ -1,5 +1,6 @@
 /**
- * クライアントから受け取った日時を UTC の ISO8601（Z）へ正規化し、timestamptz に安全に渡す。
+ * Normalize client-provided datetime to UTC ISO8601 (with Z)
+ * so it can be safely stored in timestamptz.
  */
 export function toUtcIsoString(value: string): string {
   const date = new Date(value);

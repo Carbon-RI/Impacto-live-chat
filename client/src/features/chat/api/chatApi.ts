@@ -60,19 +60,55 @@ export async function fetchJoinedEventIds(userId: string): Promise<Set<string>> 
   return new Set((data ?? []).map((row) => row.event_id as string));
 }
 
+export async function upsertEventParticipation(eventId: string, userId: string): Promise<Error | null> {
+  const { error } = await supabase
+    .from("event_participants")
+    .upsert({ event_id: eventId, user_id: userId }, { onConflict: "event_id,user_id" });
+  return error;
+}
+
+export async function deleteEventParticipation(eventId: string, userId: string): Promise<Error | null> {
+  const { error } = await supabase
+    .from("event_participants")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("user_id", userId);
+  return error;
+}
+
 /** WebSocket: `postgres_changes` listener for this user’s event_participants rows. */
-export function subscribeJoinedEvents(userId: string, onRefresh: () => void): RealtimeChannel {
+export function subscribeJoinedEvents(
+  userId: string,
+  onInsert: (eventId: string) => void,
+  onDelete: (eventId: string) => void
+): RealtimeChannel {
   return supabase
     .channel(`global-participants-${userId}`)
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "INSERT",
         schema: "public",
         table: "event_participants",
         filter: `user_id=eq.${userId}`,
       },
-      () => void onRefresh()
+      (payload) => {
+        const row = payload.new as { event_id?: string };
+        if (row.event_id) onInsert(row.event_id);
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "DELETE",
+        schema: "public",
+        table: "event_participants",
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        const row = payload.old as { event_id?: string };
+        if (row.event_id) onDelete(row.event_id);
+      }
     )
     .subscribe();
 }

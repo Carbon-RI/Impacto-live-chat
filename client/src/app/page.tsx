@@ -22,10 +22,9 @@ function indexOfFirstEventCardImage(events: EventRow[]): number {
 }
 
 export default function TopPage() {
-  const { openChat, setEventChatOpened } = useChatOpen();
+  const { openChat, setEventChatOpened, joinedEventIds, joinEvent, leaveEvent } = useChatOpen();
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
-  const [joinedEventIds, setJoinedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
@@ -129,23 +128,6 @@ export default function TopPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const currentUserId = user?.id;
-    if (!currentUserId) return;
-    async function loadJoins() {
-      const { data, error: fetchError } = await supabase
-        .from("event_participants")
-        .select("event_id")
-        .eq("user_id", currentUserId);
-      if (fetchError) {
-        setError(fetchError.message);
-        return;
-      }
-      setJoinedEventIds(new Set((data ?? []).map((row) => row.event_id as string)));
-    }
-    void loadJoins();
-  }, [user?.id]);
-
   async function ensureProfile(userId: string, name: string) {
     if (!name.trim()) return;
     await supabase
@@ -185,16 +167,14 @@ export default function TopPage() {
     if (data.user?.id) await ensureProfile(data.user.id, displayName);
   }
 
-  async function joinEvent(eventId: string) {
-    if (!user) return;
-    const { error: joinError } = await supabase
-      .from("event_participants")
-      .upsert({ event_id: eventId, user_id: user.id }, { onConflict: "event_id,user_id" });
-    if (joinError) {
-      setError(joinError.message);
-      return;
-    }
-    setJoinedEventIds((prev) => new Set(prev).add(eventId));
+  async function handleJoinEvent(eventId: string) {
+    const joinErrorMessage = await joinEvent(eventId);
+    if (joinErrorMessage) setError(joinErrorMessage);
+  }
+
+  async function handleLeaveEvent(eventId: string) {
+    const leaveErrorMessage = await leaveEvent(eventId);
+    if (leaveErrorMessage) setError(leaveErrorMessage);
   }
 
   async function toggleChat(event: EventRow, shouldOpen: boolean) {
@@ -378,7 +358,8 @@ export default function TopPage() {
                             ? "eager"
                             : "lazy"
                         }
-                        onJoin={(eventId) => void joinEvent(eventId)}
+                        onJoin={(eventId) => void handleJoinEvent(eventId)}
+                        onLeave={(eventId) => void handleLeaveEvent(eventId)}
                         onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
                         onOpenChat={(ev) => openChat(ev)}
                       />
@@ -425,7 +406,8 @@ export default function TopPage() {
                               ? "eager"
                               : "lazy"
                           }
-                          onJoin={(eventId) => void joinEvent(eventId)}
+                          onJoin={(eventId) => void handleJoinEvent(eventId)}
+                          onLeave={(eventId) => void handleLeaveEvent(eventId)}
                           onToggleChat={(ev, shouldOpen) => void toggleChat(ev, shouldOpen)}
                           onOpenChat={(ev) => openChat(ev)}
                         />

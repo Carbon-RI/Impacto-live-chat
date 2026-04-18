@@ -2,9 +2,9 @@ export const VANCOUVER_TZ = "America/Vancouver";
 export const LOCALE = "en-CA";
 
 /**
- * `<input type="datetime-local">` の値（`YYYY-MM-DDTHH:mm`、TZ なし）を、
- * ブラウザのローカル壁時計として解釈し UTC の ISO8601（Z 付き）へ変換する。
- * DB（timestamptz）へ送る前に必ず通す。
+ * Convert `<input type="datetime-local">` value (`YYYY-MM-DDTHH:mm`, no TZ)
+ * from the browser's local wall-clock interpretation to UTC ISO8601 (with Z).
+ * Always run this before sending to DB timestamptz fields.
  */
 export function datetimeLocalInputToUtcIso(value: string): string {
   const trimmed = value.trim();
@@ -64,7 +64,7 @@ export function formatDate(input: string | number | Date): string {
   }).format(date);
 }
 
-/** 手動検証・デバッグ用（本番ロジックでは使わない） */
+/** For manual verification/debugging only (not used in production logic). */
 export function describeDateForDebug(value: string | number | Date) {
   const parsed = new Date(value);
   return {

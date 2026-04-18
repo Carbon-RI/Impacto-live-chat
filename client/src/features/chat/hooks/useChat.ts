@@ -6,6 +6,7 @@ import { validateMediaFileByMimeType } from "@/utils/fileLimits";
 import type { EventRow } from "@/types/events";
 import {
   broadcastMessageDelete,
+  deleteEventParticipation,
   deleteMedia,
   deleteMessage,
   fetchEvents,
@@ -21,6 +22,7 @@ import {
   subscribeJoinedEvents,
   subscribeMessageDelete,
   subscribeMessages,
+  upsertEventParticipation,
 } from "../api/chatApi";
 import type { CameraMode, ChatMessageRow, UseChatState } from "../types/chat";
 
@@ -165,23 +167,44 @@ export function useChat() {
   useEffect(() => {
     const currentUserId = user?.id;
     if (!currentUserId) {
-      queueMicrotask(() => setJoinedEventIds(new Set()));
+      queueMicrotask(() => setJoinedEventIds(() => new Set()));
       return;
     }
 
+    let active = true;
     const loadJoins = async () => {
       try {
         const ids = await fetchJoinedEventIds(currentUserId);
-        setJoinedEventIds(ids);
+        if (!active) return;
+        setJoinedEventIds(() => new Set(ids));
       } catch {
         // Silent by design: event page handles user-visible errors.
       }
     };
 
     void loadJoins();
-    const channel = subscribeJoinedEvents(currentUserId, loadJoins);
+    const channel = subscribeJoinedEvents(
+      currentUserId,
+      (eventId) => {
+        if (!active) return;
+        setJoinedEventIds((prev) => {
+          const next = new Set(prev);
+          next.add(eventId);
+          return next;
+        });
+      },
+      (eventId) => {
+        if (!active) return;
+        setJoinedEventIds((prev) => {
+          const next = new Set(prev);
+          next.delete(eventId);
+          return next;
+        });
+      }
+    );
 
     return () => {
+      active = false;
       void removeRealtimeChannel(channel);
     };
   }, [user?.id]);
@@ -558,6 +581,60 @@ export function useChat() {
     if (videoCaptureInputRef.current) videoCaptureInputRef.current.value = "";
   }, []);
 
+  const joinEvent = useCallback(
+    async (eventId: string): Promise<string | null> => {
+      if (!user) return "Not signed in.";
+      let wasJoined = false;
+      setJoinedEventIds((prev) => {
+        wasJoined = prev.has(eventId);
+        const next = new Set(prev);
+        next.add(eventId);
+        return next;
+      });
+
+      const error = await upsertEventParticipation(eventId, user.id);
+      if (error) {
+        if (!wasJoined) {
+          setJoinedEventIds((prev) => {
+            const next = new Set(prev);
+            next.delete(eventId);
+            return next;
+          });
+        }
+        return error.message;
+      }
+      return null;
+    },
+    [user]
+  );
+
+  const leaveEvent = useCallback(
+    async (eventId: string): Promise<string | null> => {
+      if (!user) return "Not signed in.";
+      let wasJoined = false;
+      setJoinedEventIds((prev) => {
+        wasJoined = prev.has(eventId);
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
+      });
+
+      if (activeChatEvent?.id === eventId && activeChatEvent.organizer_id !== user.id) {
+        closeChatModal();
+      }
+
+      const error = await deleteEventParticipation(eventId, user.id);
+      if (error) {
+        if (wasJoined) {
+          setJoinedEventIds((prev) => new Set(prev).add(eventId));
+        }
+        return error.message;
+      }
+      return null;
+    },
+    [activeChatEvent, closeChatModal, user]
+  );
+
   const chatTabEvent = user
     ? activeChatEvent ??
       events.find((event) => event.is_chat_opened && (joinedEventIds.has(event.id) || event.organizer_id === user.id)) ??
@@ -598,6 +675,8 @@ export function useChat() {
     user,
     openChat,
     setEventChatOpened,
+    joinEvent,
+    leaveEvent,
     setChatText,
     setShowMediaOptions,
     setCameraMode,
@@ -613,5 +692,6 @@ export function useChat() {
     clearSelectedFile,
     showChatTab,
     chatTabEvent,
+    joinedEventIds,
   };
 }

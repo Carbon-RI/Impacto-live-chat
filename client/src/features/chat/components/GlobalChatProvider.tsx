@@ -23,6 +23,9 @@ export function GlobalChatProvider({ children }: { children: React.ReactNode }) 
       value={{
         openChat: chat.openChat,
         setEventChatOpened: chat.setEventChatOpened,
+        joinedEventIds: chat.joinedEventIds,
+        joinEvent: chat.joinEvent,
+        leaveEvent: chat.leaveEvent,
       }}
     >
       {children}
