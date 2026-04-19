@@ -163,11 +163,7 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                   }
 
                   const metaLines = (
-                    <div
-                      className={`max-w-[10rem] text-xs leading-snug text-white/55 ${
-                        isOwn ? "text-right" : "text-left"
-                      }`}
-                    >
+                    <div className="max-w-[10rem] text-left text-xs leading-snug text-white/55">
                       <div className="block">{formatChatMessageDateLine(message.created_at)}</div>
                       <div className="block break-words">
                         {formatChatMessageTimeOnly(message.created_at)} {displayName}
@@ -175,15 +171,14 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                     </div>
                   );
 
-                  const bubbleTextClass = isOwn
-                    ? "text-sm break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-right"
-                    : "text-sm break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-left";
-                  const bubbleMediaAlign = isOwn ? "text-right" : "text-left";
+                  const bubbleTextClass =
+                    "text-sm break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-left";
+                  const bubbleMediaAlign = "text-left";
 
                   const bubble = (
                     <div
-                      className={`min-w-0 max-w-[min(100%,280px)] rounded-lg p-2 text-white [overflow-wrap:anywhere] break-words ${
-                        isOwn ? "bg-white/12 text-right" : "bg-black/35 text-left"
+                      className={`min-w-0 max-w-[min(100%,280px)] rounded-lg p-2 text-left text-white [overflow-wrap:anywhere] break-words ${
+                        isOwn ? "bg-white/12" : "bg-black/35"
                       }`}
                     >
                       {bubbleBody(bubbleTextClass, bubbleMediaAlign)}
