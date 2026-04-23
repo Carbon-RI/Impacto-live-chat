@@ -15,9 +15,10 @@ The system separates real-time communication (Socket.IO) from persistent storage
 
 ---
 
-## 📺 Technical Walkthrough (2 min)
-
-[![Watch the video](https://img.youtube.com/vi/4RV3xgyXoK4/0.jpg)](https://www.youtube.com/watch?v=4RV3xgyXoK4)
+### 🔗 Links
+- **Live Demo**: [https://impacto-live-chat.vercel.app/](https://impacto-live-chat.vercel.app/)
+*(Please note: Initial loading may take a few seconds due to cold start)*
+- **Technical Demo (Video)**: [![Watch the video](https://img.youtube.com/vi/4RV3xgyXoK4/0.jpg)](https://www.youtube.com/watch?v=4RV3xgyXoK4)
 
 This demo showcases how the application integrates real-time communication with strict database-level security.
 
