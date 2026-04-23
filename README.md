@@ -16,16 +16,17 @@ The system separates real-time communication (Socket.IO) from persistent storage
 ---
 
 ## 📺 Technical Walkthrough (2 min)
-[![Watch the video](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+
+[![Watch the video](https://img.youtube.com/vi/4RV3xgyXoK4/0.jpg)](https://www.youtube.com/watch?v=4RV3xgyXoK4)
 
 This demo showcases how the application integrates real-time communication with strict database-level security.
 
 **Key Highlights (Jump to YouTube):**
-- [0:00 - Login & Event Browsing](https://www.youtube.com/watch?v=YOUR_VIDEO_ID&t=0s)
-- [0:20 - Real-time Chat Initialization (Socket.IO)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID&t=20s)
-- [0:40 - Persistent Chat Display during Event Creation](https://www.youtube.com/watch?v=YOUR_VIDEO_ID&t=40s)
-- [1:00 - Media Sharing & In-line Preview](https://www.youtube.com/watch?v=YOUR_VIDEO_ID&t=60s)
-- [1:35 - Administrative Authority: Organizer Features (RLS Evidence)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID&t=95s)
+- [0:00 - Login & Event Browsing](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=0s)
+- [0:20 - Real-time Chat Initialization (Socket.IO)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=20s)
+- [0:40 - Persistent Chat Display during Event Creation](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=40s)
+- [1:00 - Media Sharing & In-line Preview](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=60s)
+- [1:35 - Administrative Authority: Organizer Features (RLS Evidence)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=95s)
 
 ---
 
