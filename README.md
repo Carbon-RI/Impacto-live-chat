@@ -13,20 +13,31 @@ Users can create events, join them, and communicate in real time.
 
 The system separates real-time communication (Socket.IO) from persistent storage (Supabase).
 
----
+## 📺 Technical Walkthrough
 
-## 📺 Technical Walkthrough (2 min)
+### 🔗 Project Links
+- **Live Demo**: [https://impacto-live-chat.vercel.app/](https://impacto-live-chat.vercel.app/)  
+  *(Please note: Initial loading may take a few seconds due to cold start)*
+- **Demo Video**: [Watch on YouTube](https://www.youtube.com/watch?v=4RV3xgyXoK4)
 
-[![Watch the video](https://img.youtube.com/vi/4RV3xgyXoK4/0.jpg)](https://www.youtube.com/watch?v=4RV3xgyXoK4)
+<br />
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=4RV3xgyXoK4">
+    <img src="https://img.youtube.com/vi/4RV3xgyXoK4/0.jpg" alt="Impacto LiveChat Demo Video" width="85%">
+  </a>
+</p>
+
+<br />
 
 This demo showcases how the application integrates real-time communication with strict database-level security.
 
-**Key Highlights (Jump to YouTube):**
-- [0:00 - Login & Event Browsing](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=0s)
-- [0:20 - Real-time Chat Initialization (Socket.IO)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=20s)
-- [0:40 - Persistent Chat Display during Event Creation](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=40s)
-- [1:00 - Media Sharing & In-line Preview](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=60s)
-- [1:35 - Administrative Authority: Organizer Features (RLS Evidence)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=95s)
+### 🔑 Key Highlights (Jump to YouTube)
+- [**0:00** - Login & Event Browsing](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=0s)
+- [**0:20** - Real-time Chat Initialization (Socket.IO)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=20s)
+- [**0:40** - Persistent Chat Display during Event Creation](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=40s)
+- [**1:00** - Media Sharing & In-line Preview](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=60s)
+- [**1:35** - Administrative Authority: Organizer Features (RLS Evidence)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=95s)
 
 ---
 
