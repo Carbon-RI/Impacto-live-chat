@@ -3,13 +3,11 @@ import dotenv from "dotenv";
 import express from "express";
 import http from "http";
 import cors from "cors";
-import { Server } from "socket.io";
 import { v2 as cloudinary } from "cloudinary";
 import { createClient } from "@supabase/supabase-js";
 import { createChatRepository } from "./chat/chat.repository";
 import { createChatService } from "./chat/chat.service";
 import { registerChatHttpRoutes } from "./chat/chat.controller";
-import { registerChatSocket } from "./chat/chat.socket";
 import { validateOrigin } from "./middleware/security";
 import { toUtcIsoString } from "./utils/date";
 
@@ -119,16 +117,10 @@ app.post("/events", validateOrigin, async (req, res) => {
 });
 
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: SOCKET_CORS_ORIGINS, methods: ["GET", "POST"] },
-  maxHttpBufferSize: 1e8,
-});
-
-registerChatSocket(io, chatService);
 
 const PORT = Number(process.env.PORT) || 5001;
 server.listen(PORT, () => {
-  console.log(`HTTP + Socket.io: http://localhost:${PORT}`);
-  console.log(`  GET /health — socketJwtAuth: yes`);
+  console.log(`HTTP API server: http://localhost:${PORT}`);
+  console.log(`  GET /health`);
   console.log(`  CORS origins: ${SOCKET_CORS_ORIGINS.join(", ")}`);
 });
