@@ -8,10 +8,11 @@ Users can create events, join them, and communicate in real time.
 
 ## Architecture
 - **Client**: Next.js (UI + state management)
-- **Server**: Express + Socket.IO (API + real-time layer)
+- **Server**: Express (HTTP API layer)
 - **Database**: Supabase (persistent storage + authorization via RLS)
+- **Realtime Sync**: Supabase Realtime (`postgres_changes` + `broadcast`)
 
-The system separates real-time communication (Socket.IO) from persistent storage (Supabase).
+This application uses HTTP for all state mutations and Supabase Realtime for synchronization. See `realtime/README.md` for details.
 
 ## 📺 Technical Walkthrough
 
@@ -34,7 +35,7 @@ This demo showcases how the application integrates real-time communication with 
 
 ### 🔑 Key Highlights (Jump to YouTube)
 - [**0:00** - Login & Event Browsing](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=0s)
-- [**0:20** - Real-time Chat Initialization (Socket.IO)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=20s)
+- [**0:20** - Real-time Chat Initialization (Supabase Realtime)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=20s)
 - [**0:40** - Persistent Chat Display during Event Creation](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=40s)
 - [**1:00** - Media Sharing & In-line Preview](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=60s)
 - [**1:35** - Administrative Authority: Organizer Features (RLS Evidence)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=95s)

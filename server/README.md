@@ -1,7 +1,7 @@
-# Server (Express + Socket.IO)
+# Server (Express HTTP API)
 
 ## Overview
-Handles HTTP API requests and real-time communication via Socket.IO.
+Handles HTTP API requests for state mutations and validation.
 
 ---
 
@@ -15,8 +15,8 @@ The server follows a **Layered Architecture**:
 ---
 
 ## Chat System
-- **REST API**: Event and message management.
-- **Socket.IO**: Real-time message broadcasting to connected clients.
+- **HTTP API**: Event and message state mutations.
+- **Supabase Realtime**: State synchronization across clients (handled by client subscriptions).
 
 ---
 
