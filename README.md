@@ -19,12 +19,12 @@ This application uses HTTP for all state mutations and Supabase Realtime for syn
 ### 🔗 Project Links
 - **Live Demo**: [https://impacto-live-chat.vercel.app/](https://impacto-live-chat.vercel.app/)  
   *(Please note: Initial loading may take a few seconds due to cold start)*
-- **Demo Video**: [Watch on YouTube](https://www.youtube.com/watch?v=4RV3xgyXoK4)
+- **Demo Video**: [Watch on YouTube](https://youtu.be/EyJlOt7oV5o?si)
 
 <br />
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=4RV3xgyXoK4">
+  <a href="https://youtu.be/EyJlOt7oV5o?si">
     <img src="https://img.youtube.com/vi/4RV3xgyXoK4/0.jpg" alt="Impacto LiveChat Demo Video" width="85%">
   </a>
 </p>
@@ -34,11 +34,11 @@ This application uses HTTP for all state mutations and Supabase Realtime for syn
 This demo showcases how the application integrates real-time communication with strict database-level security.
 
 ### 🔑 Key Highlights (Jump to YouTube)
-- [**0:00** - Login & Event Browsing](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=0s)
-- [**0:20** - Real-time Chat Initialization (Supabase Realtime)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=20s)
-- [**0:40** - Persistent Chat Display during Event Creation](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=40s)
-- [**1:00** - Media Sharing & In-line Preview](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=60s)
-- [**1:35** - Administrative Authority: Organizer Features (RLS Evidence)](https://www.youtube.com/watch?v=4RV3xgyXoK4&t=95s)
+- [**0:00** - Login & Event Browsing](https://youtu.be/EyJlOt7oV5o?si&t=0s)
+- [**0:20** - Real-time Chat Initialization (Supabase Realtime)](https://youtu.be/EyJlOt7oV5o?si&t=20s)
+- [**0:40** - Persistent Chat Display during Event Creation](https://youtu.be/EyJlOt7oV5o?si&t=40s)
+- [**1:00** - Media Sharing & In-line Preview](https://youtu.be/EyJlOt7oV5o?si&t=60s)
+- [**1:35** - Administrative Authority: Organizer Features (RLS Evidence)](https://youtu.be/EyJlOt7oV5o?si&t=95s)
 
 ---
 
