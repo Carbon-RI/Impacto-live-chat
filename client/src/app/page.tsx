@@ -186,35 +186,19 @@ export default function TopPage() {
     );
     setEventChatOpened(event.id, shouldOpen);
 
-    if (shouldOpen) {
-      const { error: rpcError } = await supabase.rpc('open_event_chat', {
-        target_event_id: event.id,
-      });
-      if (rpcError) {
-        setError(rpcError.message);
-        setEvents((prev) =>
-          prev.map((row) =>
-            row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
-          )
-        );
-        setEventChatOpened(event.id, event.is_chat_opened);
-        return;
-      }
-    } else {
-      const { error: updateError } = await supabase
-        .from("events")
-        .update({ is_chat_opened: false })
-        .eq("id", event.id);
-      if (updateError) {
-        setError(updateError.message);
-        setEvents((prev) =>
-          prev.map((row) =>
-            row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
-          )
-        );
-        setEventChatOpened(event.id, event.is_chat_opened);
-        return;
-      }
+    const { error: rpcError } = await supabase.rpc("toggle_event_chat", {
+      target_event_id: event.id,
+      should_open: shouldOpen,
+    });
+    if (rpcError) {
+      setError(rpcError.message);
+      setEvents((prev) =>
+        prev.map((row) =>
+          row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
+        )
+      );
+      setEventChatOpened(event.id, event.is_chat_opened);
+      return;
     }
 
     try {

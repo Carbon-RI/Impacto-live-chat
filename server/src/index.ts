@@ -90,30 +90,17 @@ app.post("/events", validateOrigin, async (req, res) => {
 
   const authed = createAuthedClient(token);
 
-  const { data, error } = await authed
-    .from("events")
-    .insert({
-      organizer_id: user.id,
-      title,
-      category,
-      description,
-      location,
-      start_at: startAtUtc,
-      end_at: endAtUtc,
-      image_url,
-      is_chat_opened: false,
-    })
-    .select("id")
-    .maybeSingle();
-
+  const { data: createdEventId, error } = await authed.rpc("create_event_with_organizer_participation", {
+    p_title: title,
+    p_category: category,
+    p_description: description,
+    p_location: location,
+    p_start_at: startAtUtc,
+    p_end_at: endAtUtc,
+    p_image_url: image_url,
+  });
   if (error) return res.status(400).json({ error: error.message });
-  if (data?.id) {
-    const { error: participantError } = await authed
-      .from("event_participants")
-      .insert({ event_id: data.id, user_id: user.id });
-    if (participantError) return res.status(400).json({ error: participantError.message });
-  }
-  return res.json({ id: data?.id ?? null });
+  return res.json({ id: createdEventId ?? null });
 });
 
 const server = http.createServer(app);
