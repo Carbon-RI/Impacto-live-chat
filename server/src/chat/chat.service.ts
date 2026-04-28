@@ -54,14 +54,9 @@ export function createChatService(params: {
       } = await authedClient.auth.getUser();
       if (authError || !user?.id) throw new Error("unauthorized");
       const userId = user.id;
-      const { isParticipant, error: participantError } = await repository.isParticipant(input.eventId, userId, authedClient);
-      if (participantError) throw new Error(participantError.message);
-      if (!isParticipant) throw new Error("forbidden");
-
-      const { data, error } = await repository.insertMessage(
+      const { data, error } = await repository.createChatMessageAtomic(
         {
           eventId: input.eventId,
-          userId,
           content: input.content,
           mediaUrl: input.mediaUrl,
         },
@@ -69,7 +64,7 @@ export function createChatService(params: {
       );
 
       if (error) throw new Error(error.message);
-      return { id: data?.id ?? null, userId };
+      return { id: data ?? null, userId };
     },
 
     async getMessageHistory(token: string, eventId: string) {

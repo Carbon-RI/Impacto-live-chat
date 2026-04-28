@@ -99,43 +99,120 @@ alter table "public"."profiles" validate constraint "profiles_id_fkey";
 
 set check_function_bodies = off;
 
-CREATE OR REPLACE FUNCTION public.open_event_chat(target_event_id uuid)
+CREATE OR REPLACE FUNCTION public.toggle_event_chat(target_event_id uuid, should_open boolean)
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
 DECLARE
-    is_sent BOOLEAN;
+    current_welcome_sent BOOLEAN;
     org_id UUID;
 BEGIN
-    -- Row lock
-    SELECT welcome_sent, organizer_id INTO is_sent, org_id
-    FROM events
+    SELECT welcome_sent, organizer_id
+      INTO current_welcome_sent, org_id
+    FROM public.events
     WHERE id = target_event_id
     FOR UPDATE;
 
-    -- Organizer authorization check
+    IF org_id IS NULL THEN
+        RAISE EXCEPTION 'event_not_found';
+    END IF;
+
     IF auth.uid() <> org_id THEN
-        RAISE EXCEPTION 'Only the organizer can open the chat.';
+        RAISE EXCEPTION 'Only the organizer can toggle the chat.';
     END IF;
 
-    IF is_sent = FALSE THEN
-        -- Consolidate three lines into one message (including line breaks)
-        INSERT INTO messages (event_id, content, user_id, is_system) 
-        VALUES 
-            (target_event_id, 
-             'Welcome to the event! 🚀' || chr(10) || 
-             'The session has officially started.' || chr(10) || 
-             'Feel free to share your thoughts here!', 
-             org_id, TRUE);
-
-        UPDATE events 
-        SET welcome_sent = TRUE, is_chat_opened = TRUE 
-        WHERE id = target_event_id;
-    ELSE
-        UPDATE events 
-        SET is_chat_opened = TRUE 
-        WHERE id = target_event_id;
+    IF should_open AND current_welcome_sent = FALSE THEN
+        INSERT INTO public.messages (event_id, content, user_id, is_system)
+        VALUES (
+            target_event_id,
+            'Welcome to the event! 🚀' || chr(10) ||
+            'The session has officially started.' || chr(10) ||
+            'Feel free to share your thoughts here!',
+            org_id,
+            TRUE
+        );
     END IF;
+
+    UPDATE public.events
+    SET welcome_sent = CASE WHEN should_open THEN TRUE ELSE welcome_sent END,
+        is_chat_opened = should_open
+    WHERE id = target_event_id;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.open_event_chat(target_event_id uuid)
+ RETURNS void
+ LANGUAGE sql
+AS $function$
+  SELECT public.toggle_event_chat(target_event_id, TRUE);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.create_chat_message(target_event_id uuid, message_content text, message_media_url text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    inserted_id UUID;
+BEGIN
+    INSERT INTO public.messages (event_id, user_id, content, media_url)
+    SELECT target_event_id, auth.uid(), message_content, message_media_url
+    FROM public.event_participants ep
+    WHERE ep.event_id = target_event_id
+      AND ep.user_id = auth.uid()
+    RETURNING id INTO inserted_id;
+
+    IF inserted_id IS NULL THEN
+        RAISE EXCEPTION 'forbidden';
+    END IF;
+
+    RETURN inserted_id;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.create_event_with_organizer_participation(p_title text, p_category text, p_description text, p_location text, p_start_at timestamp with time zone, p_end_at timestamp with time zone, p_image_url text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    created_event_id UUID;
+    current_user_id UUID;
+BEGIN
+    current_user_id := auth.uid();
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'unauthorized';
+    END IF;
+
+    INSERT INTO public.events (
+      organizer_id,
+      title,
+      category,
+      description,
+      location,
+      start_at,
+      end_at,
+      image_url,
+      is_chat_opened
+    )
+    VALUES (
+      current_user_id,
+      p_title,
+      p_category,
+      p_description,
+      p_location,
+      p_start_at,
+      p_end_at,
+      p_image_url,
+      FALSE
+    )
+    RETURNING id INTO created_event_id;
+
+    INSERT INTO public.event_participants (event_id, user_id)
+    VALUES (created_event_id, current_user_id);
+
+    RETURN created_event_id;
 END;
 $function$
 ;
