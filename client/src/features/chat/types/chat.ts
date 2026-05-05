@@ -1,21 +1,9 @@
 import type { EventRow } from "@/types/events";
+import type { Tables } from "@/types/database.types";
 import type { Session } from "@supabase/supabase-js";
 
-export interface ChatMessageRow {
-  id: string;
-  event_id: string;
-  user_id: string;
-  content: string | null;
-  media_url: string | null;
-  created_at: string;
-  /** Server-seeded welcome lines; UI shows as System. */
-  is_system?: boolean | null;
-}
-
-export interface ChatProfileRow {
-  id: string;
-  display_name: string | null;
-}
+export type ChatMessageRow = Tables<"messages">;
+export type ChatProfileRow = Tables<"profiles">;
 
 export type CameraMode = "image" | "video" | null;
 

@@ -296,7 +296,14 @@ export function useChat() {
 
   useEffect(() => {
     const missingUserIds = Array.from(
-      new Set(messages.map((message) => message.user_id).filter((id) => id && typeof profiles[id] === "undefined"))
+      new Set(
+        messages
+          .map((message) => message.user_id)
+          .filter((id): id is string => {
+            if (!id) return false;
+            return typeof profiles[id] === "undefined";
+          })
+      )
     );
     if (missingUserIds.length === 0) return;
 
@@ -497,6 +504,7 @@ export function useChat() {
             content: text || null,
             media_url: mediaUrl,
             created_at: new Date().toISOString(),
+            is_system: false,
           };
           setMessages((prev) =>
             prev.some((message) => message.id === optimisticMessage.id)
@@ -548,7 +556,11 @@ export function useChat() {
       const { error: deleteError } = await deleteMessage(messageId, activeChatEvent.id);
       if (deleteError) {
         if (target) {
-          setMessages((prev) => [...prev, target].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+          setMessages((prev) =>
+            [...prev, target].sort((a, b) =>
+              (a.created_at ?? "").localeCompare(b.created_at ?? "")
+            )
+          );
         }
         return;
       }

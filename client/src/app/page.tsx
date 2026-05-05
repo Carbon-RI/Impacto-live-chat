@@ -197,7 +197,7 @@ export default function TopPage() {
           row.id === event.id ? { ...row, is_chat_opened: event.is_chat_opened } : row
         )
       );
-      setEventChatOpened(event.id, event.is_chat_opened);
+      setEventChatOpened(event.id, event.is_chat_opened ?? false);
       return;
     }
 

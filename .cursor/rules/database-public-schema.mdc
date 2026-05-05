@@ -1,0 +1,21 @@
+---
+description: Public schema domain tables and Supabase Database typing conventions for this repo
+alwaysApply: true
+---
+
+# Database (`public`) — core tables
+
+The application domain in Postgres **`public`** centers on **four tables**. Treat `Database["public"]["Tables"]` in **`server/src/types/database.types.ts`** as the canonical Supabase-generated shape for these tables (regenerate from Supabase CLI when the schema changes; keep **client** `client/src/types/database.types.ts` in sync when you publish API/client contracts).
+
+| Table | Role |
+|-------|------|
+| `profiles` | User profile rows keyed by `auth.users` (`id`). |
+| `events` | Events; `organizer_id` ties to the host user. |
+| `event_participants` | Who joined which event (junction). |
+| `messages` | Chat rows per event; `user_id` is the author. |
+
+Other keys in `Database` (e.g. `graphql_public`, RPC `Functions`) are supporting; new domain work should extend these four unless intentionally separate.
+
+## Messages `DELETE` and RLS
+
+Authorization for **deleting** chat rows is **not** duplicated in the server `chat.repository` (there is no repository delete path). The client issues `delete` on `messages` with the user JWT; Postgres allows the delete only when policy **`delete_messages_as_event_organizer`** applies (`supabase/migrations/005_messages_delete_for_organizer.sql`): the row’s `event_id` must match an `events` row whose **`organizer_id`** equals **`auth.uid()`**. Do not assume application-layer `organizer_id` checks unless you add a server route that uses the service role or custom SQL.

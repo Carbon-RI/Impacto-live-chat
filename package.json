@@ -1,0 +1,7 @@
+{
+  "name": "impacto-livechat",
+  "private": true,
+  "scripts": {
+    "gen:types": "supabase gen types typescript --local > server/src/types/database.types.ts && cp server/src/types/database.types.ts client/src/types/database.types.ts"
+  }
+}
