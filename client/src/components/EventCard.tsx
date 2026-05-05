@@ -74,13 +74,15 @@ export function EventCard({
       <p className="mt-2 text-sm">{event.description}</p>
       <p className="mt-2 text-xs text-gray-600">{event.location}</p>
       <p className="text-xs text-gray-600 md:hidden">
-        {formatDateTime(event.start_at)} - {formatDateTime(event.end_at)}
+        {event.start_at && event.end_at
+          ? `${formatDateTime(event.start_at)} - ${formatDateTime(event.end_at)}`
+          : "—"}
       </p>
       <div className="hidden text-xs text-gray-600 md:block">
-        <p>{formatDateTime(event.start_at)}</p>
+        <p>{event.start_at ? formatDateTime(event.start_at) : "—"}</p>
         <p>
           {"- "}
-          {formatDateTime(event.end_at)}
+          {event.end_at ? formatDateTime(event.end_at) : "—"}
         </p>
       </div>
 

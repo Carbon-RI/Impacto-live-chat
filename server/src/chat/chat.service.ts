@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../types/database.types";
 import type { createChatRepository } from "./chat.repository";
 
 const MAX_MESSAGE_TEXT = 8000;
@@ -26,7 +27,7 @@ function extractCloudinaryPublicId(mediaUrl: string): string | null {
 
 export function createChatService(params: {
   repository: ChatRepository;
-  createAuthedClient: (token: string) => SupabaseClient;
+  createAuthedClient: (token: string) => SupabaseClient<Database>;
 }) {
   const { repository } = params;
 

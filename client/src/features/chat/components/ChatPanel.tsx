@@ -70,11 +70,15 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
               <div ref={messageContentRef}>
                 {messages.map((message) => {
                   const isSystem = Boolean(message.is_system);
-                  const isOwn = Boolean(user?.id === message.user_id && !isSystem);
+                  const isOwn = Boolean(
+                    message.user_id && user?.id === message.user_id && !isSystem
+                  );
                   const showDelete = user?.id === activeChatEvent.organizer_id;
                   const displayName = isSystem
                     ? "System"
-                    : (profiles[message.user_id] ?? message.user_id.slice(0, 8));
+                    : message.user_id
+                      ? (profiles[message.user_id] ?? message.user_id.slice(0, 8))
+                      : "Unknown";
 
                   const bubbleBody = (contentTextClassName: string, mediaAlignClass: string) => (
                     <>
@@ -150,7 +154,9 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
                       <div key={message.id} className="group mb-3 flex w-full justify-center px-1">
                         <div className="flex w-full max-w-[min(100%,380px)] flex-col gap-1.5">
                           <div className="flex w-full items-center justify-start gap-2 text-left text-xs text-white/70">
-                            <span>{formatDateTime(message.created_at)}</span>
+                            <span>
+                              {message.created_at ? formatDateTime(message.created_at) : "—"}
+                            </span>
                             <span className="font-semibold text-white/85">System</span>
                             {deleteButton ? <span className="ml-auto shrink-0">{deleteButton}</span> : null}
                           </div>
@@ -164,9 +170,16 @@ export function ChatPanel({ chat }: { chat: ReturnType<typeof import("../hooks/u
 
                   const metaLines = (
                     <div className="max-w-[10rem] text-left text-xs leading-snug text-white/55">
-                      <div className="block">{formatChatMessageDateLine(message.created_at)}</div>
+                      <div className="block">
+                        {message.created_at
+                          ? formatChatMessageDateLine(message.created_at)
+                          : "—"}
+                      </div>
                       <div className="block break-words">
-                        {formatChatMessageTimeOnly(message.created_at)} {displayName}
+                        {message.created_at
+                          ? formatChatMessageTimeOnly(message.created_at)
+                          : "—"}{" "}
+                        {displayName}
                       </div>
                     </div>
                   );

@@ -4,8 +4,9 @@ import express from "express";
 import http from "http";
 import cors from "cors";
 import { v2 as cloudinary } from "cloudinary";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createChatRepository } from "./chat/chat.repository";
+import type { Database } from "./types/database.types";
 import { createChatService } from "./chat/chat.service";
 import { registerChatHttpRoutes } from "./chat/chat.controller";
 import { validateOrigin } from "./middleware/security";
@@ -33,9 +34,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("SUPABASE_URL and SUPABASE_ANON_KEY are required");
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const createAuthedClient = (token: string) =>
-  createClient(supabaseUrl, supabaseAnonKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+const createAuthedClient = (token: string): SupabaseClient<Database> =>
+  createClient<Database>(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false },
   });
@@ -97,7 +98,7 @@ app.post("/events", validateOrigin, async (req, res) => {
     p_location: location,
     p_start_at: startAtUtc,
     p_end_at: endAtUtc,
-    p_image_url: image_url,
+    ...(image_url != null ? { p_image_url: image_url } : {}),
   });
   if (error) return res.status(400).json({ error: error.message });
   return res.json({ id: createdEventId ?? null });
